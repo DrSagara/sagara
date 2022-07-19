@@ -149,6 +149,7 @@
                 "template": "Bskill_ctrl_cost_aegir.png"
             },
             "bskill_ctrl_cost_bd1": {
+                "additional_Doc": "这个有附加条件，没法弄，硬编码了",
                 "desc": [
                     "进驻控制中枢时，控制中枢内所有干员的心情每小时恢复+0.05；当自身心情处于12以下时，人间烟火+15"
                 ],
@@ -161,24 +162,20 @@
                 "template": "Bskill_ctrl_cost_bd1.png"
             },
             "bskill_ctrl_cost_bd1&bd2": {
+                "additional_Doc": "这个有附加条件，没法弄，硬编码了",
                 "desc": [
                     "进驻控制中枢时，当自身心情大于12时，人间烟火+15；当自身心情处于12以下时，感知信息+10"
                 ],
-                "efficient": {
-                    "all": 0.01
-                },
                 "name": [
                     "“山河远阔”"
                 ],
                 "template": "Bskill_ctrl_cost_bd1&bd2.png"
             },
             "bskill_ctrl_cost_bd2": {
+                "additional_Doc": "这个有附加条件，没法弄，硬编码了",
                 "desc": [
                     "进驻控制中枢时，自身心情每小时消耗+0.5；当自身心情大于12时，感知信息+10"
                 ],
-                "efficient": {
-                    "all": 0.01
-                },
                 "name": [
                     "\"不以己悲\""
                 ],
@@ -242,12 +239,10 @@
                 "template": "Bskill_ctrl_lungmen.png"
             },
             "bskill_ctrl_p_bot": {
+                "additional_Doc": "这个有附加条件，没法弄，硬编码了",
                 "desc": [
                     "进驻控制中枢时，如果Lancet-2进驻在发电站，发电站额外+2（仅影响设施数量）"
                 ],
-                "efficient": {
-                    "all": 0.01
-                },
                 "name": [
                     "我寻思能行"
                 ],
@@ -339,12 +334,10 @@
                 "template": "Bskill_ctrl_tachanka.png"
             },
             "bskill_ctrl_token_p_spd": {
+                "additional_Doc": "这个有附加条件，没法弄，硬编码了",
                 "desc": [
                     "进驻控制中枢时，如果有2台以上作业平台进驻在发电站，则所有制造站生产力+2%（同种效果取最高）"
                 ],
-                "efficient": {
-                    "all": 0.01
-                },
                 "name": [
                     "超频"
                 ],
@@ -369,6 +362,9 @@
     "Dorm": {
         "skills": {
             "bskill_dorm_all&bd_n1": {
+                "additional": {
+                    "感知信息": "[NumOf梦境]"
+                },
                 "desc": [
                     "进驻宿舍时，每1层梦境转化为1点感知信息"
                 ],
@@ -378,6 +374,9 @@
                 "template": "Bskill_dorm_all&bd_n1.png"
             },
             "bskill_dorm_all&bd_n1_2": {
+                "additional": {
+                    "感知信息": "[NumOf小节]"
+                },
                 "desc": [
                     "进驻宿舍时，每1个小节转化为1点感知信息"
                 ],
@@ -387,6 +386,9 @@
                 "template": "Bskill_dorm_all&bd_n1_2.png"
             },
             "bskill_dorm_all&bd_n1_n2": {
+                "additional": {
+                    "梦境": "[LevelOfRoom]"
+                },
                 "desc": [
                     "进驻宿舍时，该宿舍内所有干员的心情每小时恢复+0.1（同种效果取最高），同时当前宿舍每级提供1层梦境"
                 ],
@@ -396,6 +398,9 @@
                 "template": "Bskill_dorm_all&bd_n1_n2.png"
             },
             "bskill_dorm_all&bd_n1_n3": {
+                "additional": {
+                    "小节": "[LevelOfRoom]"
+                },
                 "desc": [
                     "进驻宿舍时，使该宿舍内除自身以外心情未满的某个干员每小时恢复+0.65（同种效果取最高），同时当前宿舍每级提供1个小节"
                 ],
@@ -996,7 +1001,18 @@
                     "进驻制造站时，生产力+15%"
                 ],
                 "efficient": {
-                    "all": 15
+                    "all": 15,
+                    "extra": {
+                        "CombatRecord": 10,
+                        "conditions": {
+                            "exists": "bskill_ctrl_psk",
+                            "filter": [
+                                "远牙",
+                                "灰毫",
+                                "野鬃"
+                            ]
+                        }
+                    }
                 },
                 "name": [
                     "莱茵科技·α",
@@ -1013,7 +1029,18 @@
                     "进驻制造站时，生产力+25%"
                 ],
                 "efficient": {
-                    "all": 25
+                    "all": 25,
+                    "extra": {
+                        "CombatRecord": 10,
+                        "conditions": {
+                            "exists": "bskill_ctrl_psk",
+                            "filter": [
+                                "远牙",
+                                "灰毫",
+                                "野鬃"
+                            ]
+                        }
+                    }
                 },
                 "name": [
                     "红松骑士团·β",
@@ -1066,6 +1093,11 @@
                 "desc": [
                     "进驻制造站时，每2点思维链环+1%生产力"
                 ],
+                "efficient": {
+                    "extra": {
+                        "all": "[NumOf思维链环] / 2"
+                    }
+                },
                 "name": [
                     "念力"
                 ],
@@ -1076,7 +1108,9 @@
                     "进驻制造站时，每1点思维链环+1%生产力"
                 ],
                 "efficient": {
-                    "all": 20
+                    "extra": {
+                        "all": "[NumOf思维链环] / 2"
+                    }
                 },
                 "name": [
                     "意识实体"
@@ -1880,6 +1914,9 @@
                 "template": "Bskill_hire_spd_bd_n1_n1.png"
             },
             "bskill_hire_spd_bd_n2": {
+                "additional": {
+                    "人间烟火": "[NumOf招募位] * 10"
+                },
                 "desc": [
                     "进驻人力办公室时，每个招募位（不包含初始招募位）+10点人间烟火"
                 ],
@@ -1889,6 +1926,9 @@
                 "template": "Bskill_hire_spd_bd_n2.png"
             },
             "bskill_hire_spd_memento": {
+                "additional": {
+                    "感知信息": "[NumOf记忆碎片]"
+                },
                 "desc": [
                     "进驻人力办公室时，每1点记忆碎片转化为1点感知信息，心情耗尽时清空所有记忆碎片和自身累积的感知信息"
                 ],
@@ -2331,6 +2371,10 @@
                 "template": "Bskill_tra_Lappland2.png"
             },
             "bskill_tra_bd_n1": {
+                "additional": {
+                    "感知信息": "[NumOfPeopleInDrom]",
+                    "无声共鸣": "[NumOf感知信息]"
+                },
                 "desc": [
                     "进驻贸易站时，宿舍内每有1名干员则感知信息+1，同时每1点感知信息转化为1点无声共鸣"
                 ],
@@ -2340,9 +2384,17 @@
                 "template": "Bskill_tra_bd_n1.png"
             },
             "bskill_tra_bd_n2": {
+                "additional": {
+                    "人间烟火": "[NumOfPeopleInDrom]"
+                },
                 "desc": [
                     "进驻贸易站时，宿舍内每有1名干员则人间烟火+1，同时每有1点人间烟火，则订单获取效率+1%"
                 ],
+                "efficient": {
+                    "extra": {
+                        "all": "[NumOf人间烟火]"
+                    }
+                },
                 "name": [
                     "“愿者上钩”"
                 ],
@@ -2612,6 +2664,11 @@
                 "desc": [
                     "进驻贸易站时，每4点无声共鸣+1%订单效率"
                 ],
+                "efficient": {
+                    "extra": {
+                        "all": "[NumOf无声共鸣] / 4"
+                    }
+                },
                 "name": [
                     "徘徊旋律"
                 ],
@@ -2621,6 +2678,11 @@
                 "desc": [
                     "进驻贸易站时，每2点无声共鸣+1%订单效率"
                 ],
+                "efficient": {
+                    "extra": {
+                        "all": "[NumOf无声共鸣] / 2"
+                    }
+                },
                 "name": [
                     "怅惘和声"
                 ],
@@ -3000,7 +3062,13 @@
                     {
                         "desc": "银灰-2",
                         "efficient": {
-                            "all": 28
+                            "all": 28,
+                            "extra": {
+                                "all": 15,
+                                "conditions": {
+                                    "exists": "bskill_ctrl_t_limit&spd"
+                                }
+                            }
                         },
                         "skills": [
                             "bskill_tra_spd&limit5"
@@ -3009,7 +3077,13 @@
                     {
                         "desc": "喀兰贸易·β",
                         "efficient": {
-                            "all": 27
+                            "all": 27,
+                            "extra": {
+                                "all": 15,
+                                "conditions": {
+                                    "exists": "bskill_ctrl_t_limit&spd"
+                                }
+                            }
                         },
                         "skills": [
                             "bskill_tra_spd&limit4"
