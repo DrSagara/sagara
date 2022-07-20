@@ -324,6 +324,7 @@ void Assistant::clear_cache()
     m_status->clear_number();
     m_status->clear_rect();
     m_status->clear_str();
+    m_status->infrast_additional().clear();
 }
 
 bool asst::Assistant::inited() const noexcept

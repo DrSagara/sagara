@@ -74,7 +74,11 @@ bool asst::InfrastConfiger::parse(const json::value& json)
                 }
             }
             skill.max_num = skill_json.get("maxNum", INT_MAX);
-
+            if (auto additional_opt = skill_json.find<json::object>("additional")) {
+                for (const auto& [additional_key, additional_value] : additional_opt.value()) {
+                    skill.additional.emplace(additional_key, additional_value.as_string());
+                }
+            }
             facility_skills.emplace(id, std::move(skill));
         }
         m_skills.emplace(facility_name, std::move(facility_skills));

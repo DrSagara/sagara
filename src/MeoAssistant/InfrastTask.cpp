@@ -11,6 +11,7 @@
 #include "InfrastReceptionTask.h"
 #include "InfrastOfficeTask.h"
 #include "InfrastDormTask.h"
+#include "InfrastJointTask.h"
 #include "DronesForShamareTaskPlugin.h"
 #include "ReplenishOriginiumShardTaskPlugin.h"
 
@@ -24,7 +25,8 @@ asst::InfrastTask::InfrastTask(const AsstCallback& callback, void* callback_arg)
     m_control_task_ptr(std::make_shared<InfrastControlTask>(callback, callback_arg, TaskType)),
     m_reception_task_ptr(std::make_shared<InfrastReceptionTask>(callback, callback_arg, TaskType)),
     m_office_task_ptr(std::make_shared<InfrastOfficeTask>(callback, callback_arg, TaskType)),
-    m_dorm_task_ptr(std::make_shared<InfrastDormTask>(callback, callback_arg, TaskType))
+    m_dorm_task_ptr(std::make_shared<InfrastDormTask>(callback, callback_arg, TaskType)),
+    m_joint_task_ptr(std::make_shared< InfrastJointTask>(callback, callback_arg, TaskType))
 {
     m_infrast_begin_task_ptr->set_tasks({ "InfrastBegin" });
     m_trade_task_ptr->regiseter_plugin<DronesForShamareTaskPlugin>()->set_retry_times(0);
@@ -49,7 +51,8 @@ bool asst::InfrastTask::set_params(const json::value& params)
         append_infrast_begin();
         m_subtasks.emplace_back(m_info_task_ptr);
 
-        for (const auto& facility_json : facility_opt.value()) {
+        auto& facility_arr = facility_opt.value();
+        for (const auto& facility_json : facility_arr) {
             if (!facility_json.is_string()) {
                 m_subtasks.clear();
                 append_infrast_begin();
@@ -84,6 +87,12 @@ bool asst::InfrastTask::set_params(const json::value& params)
                 append_infrast_begin();
                 return false;
             }
+            append_infrast_begin();
+        }
+
+        bool joint = params.get("joint", true);
+        if (joint && facility_arr.size() > 1) {
+            m_subtasks.emplace_back(m_joint_task_ptr);
             append_infrast_begin();
         }
     }

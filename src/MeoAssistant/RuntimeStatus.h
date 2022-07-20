@@ -9,6 +9,13 @@
 
 namespace asst
 {
+    struct InfrastSkillAdditional
+    {
+        std::string skill_id;
+        std::string additional_name;
+        std::string additional_value;
+    };
+
     class RuntimeStatus
     {
     public:
@@ -29,6 +36,8 @@ namespace asst
         void set_str(std::string key, std::string value);
         void clear_str() noexcept;
 
+        std::vector<InfrastSkillAdditional>& infrast_additional();
+
         RuntimeStatus& operator=(const RuntimeStatus& rhs) = delete;
         RuntimeStatus& operator=(RuntimeStatus&& rhs) noexcept = delete;
 
@@ -37,5 +46,6 @@ namespace asst
         std::unordered_map<std::string, int64_t> m_number;
         std::unordered_map<std::string, Rect> m_rect;
         std::unordered_map<std::string, std::string> m_string;
+        std::vector<InfrastSkillAdditional> m_infrast_additional;
     };
 }

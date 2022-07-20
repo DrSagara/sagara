@@ -186,6 +186,7 @@ size_t asst::InfrastProductionTask::opers_detect()
     const auto& cur_all_opers = oper_analyzer.get_result();
     max_num_of_opers_per_page = (std::max)(max_num_of_opers_per_page, cur_all_opers.size());
 
+    const auto& all_skills = Resrc.infrast().get_skills(facility_name());
     const int face_hash_thres = std::dynamic_pointer_cast<HashTaskInfo>(
         Task.get("InfrastOperFaceHash"))->dist_threshold;
     const size_t pre_size = m_all_available_opers.size();
@@ -220,6 +221,25 @@ size_t asst::InfrastProductionTask::opers_detect()
         // 如果两个的hash距离过小，则认为是同一个干员，不进行插入
         if (find_iter != m_all_available_opers.cend()) {
             continue;
+        }
+        for (const auto& skill : cur_oper.skills) {
+            auto it = all_skills.find(skill.id);
+            if (it == all_skills.end()) {
+                // 按理说没这种情况
+                Log.error("error skill id", skill.id);
+                continue;
+            }
+            if (it->second.additional.empty()) {
+                continue;
+            }
+            InfrastSkillAdditional additional;
+            additional.skill_id = skill.id;
+
+            for (const auto& [name, value] : it->second.additional) {
+                additional.additional_name = name;
+                additional.additional_value = value;
+                m_status->infrast_additional().emplace_back(additional);
+            }
         }
         m_all_available_opers.emplace_back(cur_oper);
     }
