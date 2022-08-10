@@ -17,14 +17,6 @@ namespace MeoAssistant.Core
     using MeoAssistant.Core.Utilities;
 
     /// <summary>
-    /// The API callback of Assistant.
-    /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="detailJson">The JSON content.</param>
-    /// <param name="customArgs">The custom arguments.</param>
-    public delegate void AssistantApiCallback(int message, string detailJson, params object[] customArgs);
-
-    /// <summary>
     /// The Assistant.
     /// </summary>
     public class Assistant : IDisposable
@@ -89,7 +81,7 @@ namespace MeoAssistant.Core
         /// <param name="adbPath">The ADB path.</param>
         /// <param name="address">The address.</param>
         /// <param name="config">The config.</param>
-        /// <returns>A value that indicates whether the operation is successful.</returns>
+        /// <returns>A value indicating whether the operation is successful.</returns>
         public bool Connect(string adbPath, string address, string config)
         {
             throw new NotImplementedException();
@@ -111,7 +103,7 @@ namespace MeoAssistant.Core
         /// </summary>
         /// <param name="taskId">The task ID.</param>
         /// <param name="args">The arguments.</param>
-        /// <returns>A value that indicates whether the operation is successful.</returns>
+        /// <returns>A value indicating whether the operation is successful.</returns>
         public bool SetTaskParams(int taskId, string args)
         {
             throw new NotImplementedException();
@@ -120,8 +112,8 @@ namespace MeoAssistant.Core
         /// <summary>
         /// Starts task queue.
         /// </summary>
-        /// <param name="isBlocking">A value that indicates whether the operation is blocking.</param>
-        /// <returns>A value that indicates whether the operation is successful.</returns>
+        /// <param name="isBlocking">A value indicating whether the operation is blocking.</param>
+        /// <returns>A value indicating whether the operation is successful.</returns>
         public bool Start(bool isBlocking = true)
         {
             throw new NotImplementedException();
@@ -130,8 +122,8 @@ namespace MeoAssistant.Core
         /// <summary>
         /// Stops task queue and empty it.
         /// </summary>
-        /// <param name="isBlocking">A value that indicates whether the operation is blocking.</param>
-        /// <returns>A value that indicates whether the operation is successful.</returns>
+        /// <param name="isBlocking">A value indicating whether the operation is blocking.</param>
+        /// <returns>A value indicating whether the operation is successful.</returns>
         public bool Stop(bool isBlocking = true)
         {
             throw new NotImplementedException();
@@ -151,8 +143,8 @@ namespace MeoAssistant.Core
         /// </summary>
         /// <param name="x">The X coordinate.</param>
         /// <param name="y">The Y coordinate.</param>
-        /// <param name="isBlocking">A value that indicates whether the operation is blocking.</param>
-        /// <returns>A value that indicates whether the operation is successful.</returns>
+        /// <param name="isBlocking">A value indicating whether the operation is blocking.</param>
+        /// <returns>A value indicating whether the operation is successful.</returns>
         public bool ControllerClick(int x, int y, bool isBlocking = true)
         {
             throw new NotImplementedException();
@@ -186,7 +178,7 @@ namespace MeoAssistant.Core
         /// <summary>
         /// Disposes the object.
         /// </summary>
-        /// <param name="disposing">A value that indicates whether the call is from <see cref="Dispose()"/>.</param>
+        /// <param name="disposing">A value indicating whether the call is from <see cref="Dispose()"/>.</param>
         protected void Dispose(bool disposing)
         {
             if (!this.disposed)
