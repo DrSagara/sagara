@@ -14,6 +14,7 @@
 namespace MeoAssistant.Core
 {
     using MeoAssistant.Core.Utilities;
+    using MeoAssistant.Core.Utilities.Types;
     using MeoAssistant.Core.Wrappers;
 
     /// <summary>

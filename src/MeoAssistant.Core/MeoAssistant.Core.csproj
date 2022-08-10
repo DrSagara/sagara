@@ -6,11 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <!-- StyleCop -->
-  <PropertyGroup>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-  </PropertyGroup>
-  
+  <!-- StyleCop -->  
   <ItemGroup>
     <AdditionalFiles Include="stylecop.json" />
     <PackageReference Include="StyleCop.Analyzers">
