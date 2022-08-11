@@ -15,39 +15,41 @@ namespace MeoAssistant.Core
 {
     using MeoAssistant.Core.Tasks;
     using MeoAssistant.Core.Utilities;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
 
     /// <summary>
     /// The Assistant.
     /// </summary>
     public class Assistant : IDisposable
     {
-        private bool isInited;
+        private bool isInited = false;
 
-        private Guid guid;
+        private Guid guid = Guid.Empty;
 
         private Controller controller;
 
-        private RuntimeStatus runtimeStatus;
+        private RuntimeStatus runtimeStatus = new();
 
-        private bool isThreadExited;
+        private bool isThreadExited = false;
 
-        private List<KeyValuePair<int, PackageTask>> taskList;
+        private List<KeyValuePair<int, PackageTask>> taskList = new();
 
         private int taskId;
 
         private AssistantApiCallback? callback;
 
-        private object[] callbackArgs;
+        private object[] callbackArgs = Array.Empty<object>();
 
         private bool isThreadIdle = true;
 
-        private Mutex mutex;
+        private object mutex = new();
 
         /* m_condvar */
 
-        private Queue<KeyValuePair<AssistantMessage, object>> messageQueue;
+        private Queue<KeyValuePair<AssistantMessage, object>> messageQueue = new();
 
-        private Mutex messageMutex;
+        private object messageMutex = new();
 
         /* m_msg_condvar */
 
@@ -64,7 +66,11 @@ namespace MeoAssistant.Core
         /// <param name="callbackArg">The callback arguments.</param>
         public Assistant(AssistantApiCallback? callback = null, params object[] callbackArg)
         {
-            throw new NotImplementedException();
+            using var trace = new LogTraceFunction();
+
+            this.controller = new(TaskCallback, this);
+            this.workingThread = new Task(this.WorkingProc);
+            this.messageThread = new Task(this.MessageProc);
         }
 
         /// <summary>
@@ -84,7 +90,26 @@ namespace MeoAssistant.Core
         /// <returns>A value indicating whether the operation is successful.</returns>
         public bool Connect(string adbPath, string address, string config)
         {
-            throw new NotImplementedException();
+            using var trace = new LogTraceFunction();
+
+            lock (this.mutex)
+            {
+                this.Stop(false);
+
+                var ret = this.controller.Connect(adbPath, address, string.IsNullOrEmpty(config) ? "General" : config);
+                if (ret)
+                {
+                    this.guid = this.controller.Guid;
+                }
+
+                return ret;
+            }
+        }
+
+        private record TaskJsonType
+        {
+            [JsonPropertyName("task_type")]
+            public string TaskType { get; set; } = string.Empty;
         }
 
         /// <summary>
@@ -183,6 +208,8 @@ namespace MeoAssistant.Core
         {
             if (!this.disposed)
             {
+                using var trace = new LogTraceFunction();
+
                 if (disposing)
                 {
                     // Clean up managed sources.
@@ -190,6 +217,14 @@ namespace MeoAssistant.Core
                 }
 
                 // Clean up unmanaged sources.
+                this.isThreadExited = true;
+                this.isThreadIdle = true;
+
+                /*
+                 * condvar
+                 * msg_condvar
+                 */
+
                 this.disposed = true;
             }
         }
