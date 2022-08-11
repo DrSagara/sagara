@@ -1,5 +1,7 @@
 #include "InfrastFacilityImageAnalyzer.h"
 
+#include "NoWarningCV.h"
+
 #include "AsstUtils.hpp"
 #include "Logger.hpp"
 #include "MultiMatchImageAnalyzer.h"
@@ -55,9 +57,8 @@ bool asst::InfrastFacilityImageAnalyzer::analyze()
                 }
 
                 const auto& cur_res = mm_analyzer.get_result();
-                auto cur_max_iter = std::max_element(
-                    cur_res.cbegin(), cur_res.cend(),
-                    [](const MatchRect& lhs, const MatchRect& rhs) -> bool {
+                auto cur_max_iter =
+                    ranges::max_element(cur_res, [](const MatchRect& lhs, const MatchRect& rhs) -> bool {
                         return lhs.score < rhs.score;
                     });
                 if (cur_max_iter == cur_res.cend()) {

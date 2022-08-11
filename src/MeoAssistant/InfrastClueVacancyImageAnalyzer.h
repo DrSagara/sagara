@@ -7,7 +7,7 @@ namespace asst
     {
     public:
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
-        virtual ~InfrastClueVacancyImageAnalyzer() = default;
+        virtual ~InfrastClueVacancyImageAnalyzer() override = default;
         InfrastClueVacancyImageAnalyzer(const cv::Mat image, const Rect& roi) = delete;
 
         virtual bool analyze() override;
@@ -28,10 +28,6 @@ namespace asst
         virtual void set_roi(const Rect& roi) noexcept override
         {
             AbstractImageAnalyzer::set_roi(roi);
-        }
-        virtual void set_image(const cv::Mat image, const Rect& roi)
-        {
-            AbstractImageAnalyzer::set_image(image, roi);
         }
 
         std::vector<std::string> m_to_be_analyzed;

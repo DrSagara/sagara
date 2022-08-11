@@ -1,6 +1,7 @@
 #include "InfrastProductionTask.h"
 
 #include <algorithm>
+#include "AsstRanges.hpp"
 
 #include <calculator/calculator.hpp>
 
@@ -100,10 +101,10 @@ bool asst::InfrastProductionTask::shift_facility_list()
 
         locked_analyzer.set_image(image);
         if (locked_analyzer.analyze()) {
-            m_cur_num_of_lokced_opers = static_cast<int>(locked_analyzer.get_result().size());
+            m_cur_num_of_locked_opers = static_cast<int>(locked_analyzer.get_result().size());
         }
         else {
-            m_cur_num_of_lokced_opers = 0;
+            m_cur_num_of_locked_opers = 0;
         }
 
         /* 进入干员选择页面 */
@@ -207,8 +208,7 @@ size_t asst::InfrastProductionTask::opers_detect()
             //--cur_available_num;
             continue;
         }
-        auto find_iter = std::find_if(
-            m_all_available_opers.cbegin(), m_all_available_opers.cend(),
+        auto find_iter = ranges::find_if(m_all_available_opers,
             [&](const infrast::Oper& oper) -> bool {
                 if (oper.skills != cur_oper.skills) {
                     return false;
@@ -250,26 +250,26 @@ bool asst::InfrastProductionTask::optimal_calc()
 {
     LogTraceFunction;
     auto& facility_info = Resrc.infrast().get_facility_info(facility_name());
-    int cur_max_num_of_opers = facility_info.max_num_of_opers - m_cur_num_of_lokced_opers;
+    int cur_max_num_of_opers = facility_info.max_num_of_opers - m_cur_num_of_locked_opers;
 
-    std::vector<infrast::SkillsComb> all_avaliable_combs;
-    all_avaliable_combs.reserve(m_all_available_opers.size());
+    std::vector<infrast::SkillsComb> all_available_combs;
+    all_available_combs.reserve(m_all_available_opers.size());
     for (auto&& oper : m_all_available_opers) {
         auto comb = efficient_regex_calc(oper.skills);
         comb.name_img = oper.name_img;
-        all_avaliable_combs.emplace_back(std::move(comb));
+        all_available_combs.emplace_back(std::move(comb));
     }
 
     // 先把单个的技能按效率排个序，取效率最高的几个
     std::vector<infrast::SkillsComb> optimal_combs;
     optimal_combs.reserve(cur_max_num_of_opers);
     double max_efficient = 0;
-    std::sort(all_avaliable_combs.begin(), all_avaliable_combs.end(),
+    ranges::sort(all_available_combs,
         [&](const infrast::SkillsComb& lhs, const infrast::SkillsComb& rhs) -> bool {
             return lhs.efficient.at(m_product) > rhs.efficient.at(m_product);
         });
 
-    for (const auto& comb : all_avaliable_combs) {
+    for (const auto& comb : all_available_combs) {
         std::string skill_str;
         for (const auto& skill : comb.skills) {
             skill_str += skill.id + " ";
@@ -279,7 +279,7 @@ bool asst::InfrastProductionTask::optimal_calc()
 
     std::unordered_map<std::string, int> skills_num;
     for (int i = 0; i != m_all_available_opers.size(); ++i) {
-        const auto& comb = all_avaliable_combs.at(i);
+        const auto& comb = all_available_combs.at(i);
 
         bool out_of_num = false;
         for (auto&& skill : comb.skills) {
@@ -293,7 +293,7 @@ bool asst::InfrastProductionTask::optimal_calc()
         }
 
         optimal_combs.emplace_back(comb);
-        max_efficient += all_avaliable_combs.at(i).efficient.at(m_product);
+        max_efficient += all_available_combs.at(i).efficient.at(m_product);
 
         for (auto&& skill : comb.skills) {
             ++skills_num[skill.id];
@@ -315,7 +315,7 @@ bool asst::InfrastProductionTask::optimal_calc()
     }
 
     // 如果有被锁住的干员，说明当前基建没升满级，组合就不启用
-    if (m_cur_num_of_lokced_opers != 0) {
+    if (m_cur_num_of_locked_opers != 0) {
         m_optimal_combs = std::move(optimal_combs);
         return true;
     }
@@ -324,7 +324,7 @@ bool asst::InfrastProductionTask::optimal_calc()
     auto& all_group = Resrc.infrast().get_skills_group(facility_name());
     for (const infrast::SkillsGroup& group : all_group) {
         Log.trace(group.desc);
-        auto cur_available_opers = all_avaliable_combs;
+        auto cur_available_opers = all_available_combs;
         bool group_unavailable = false;
         std::vector<infrast::SkillsComb> cur_combs;
         cur_combs.reserve(cur_max_num_of_opers);
@@ -349,8 +349,7 @@ bool asst::InfrastProductionTask::optimal_calc()
         // necessary里的技能，一个都不能少
         // TODO necessary暂时没做hash校验。因为没有需要比hash的necessary干员（
         for (const infrast::SkillsComb& nec_skills : group.necessary) {
-            auto find_iter = std::find_if(
-                cur_available_opers.cbegin(), cur_available_opers.cend(),
+            auto find_iter = ranges::find_if(cur_available_opers,
                 [&](const infrast::SkillsComb& arg) -> bool {
                     return arg == nec_skills;
                 });
@@ -380,7 +379,7 @@ bool asst::InfrastProductionTask::optimal_calc()
             }
         }
 
-        std::sort(optional.begin(), optional.end(),
+        ranges::sort(optional,
             [&](const infrast::SkillsComb& lhs,
                 const infrast::SkillsComb& rhs) -> bool {
                     return lhs.efficient.at(m_product) > rhs.efficient.at(m_product);
@@ -403,17 +402,13 @@ bool asst::InfrastProductionTask::optimal_calc()
                     else {
                         OcrWithPreprocessImageAnalyzer name_analyzer(find_iter->name_img);
                         name_analyzer.set_replace(
-                            std::dynamic_pointer_cast<OcrTaskInfo>(
-                                Task.get("CharsNameOcrReplace"))
-                            ->replace_map);
+                            Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map);
                         Log.trace("Analyze name filter");
                         if (!name_analyzer.analyze()) {
                             continue;
                         }
                         std::string name = name_analyzer.get_result().front().text;
-                        hash_matched = std::find(
-                            opt.name_filter.cbegin(), opt.name_filter.cend(), name)
-                            != opt.name_filter.cend();
+                        hash_matched = ranges::find(opt.name_filter, name) != opt.name_filter.cend();
                     }
                     if (!hash_matched) {
                         ++find_iter;
@@ -480,7 +475,7 @@ bool asst::InfrastProductionTask::opers_choose()
     bool has_error = false;
 
     auto& facility_info = Resrc.infrast().get_facility_info(facility_name());
-    int cur_max_num_of_opers = facility_info.max_num_of_opers - m_cur_num_of_lokced_opers;
+    int cur_max_num_of_opers = facility_info.max_num_of_opers - m_cur_num_of_locked_opers;
 
     const int face_hash_thres = std::dynamic_pointer_cast<HashTaskInfo>(
         Task.get("InfrastOperFaceHash"))->dist_threshold;
@@ -518,16 +513,15 @@ bool asst::InfrastProductionTask::opers_choose()
         auto cur_all_opers = oper_analyzer.get_result();
         Log.trace("before mood filter, opers size:", cur_all_opers.size());
         // 小于心情阈值的干员则不可用
-        auto remove_iter = std::remove_if(cur_all_opers.begin(), cur_all_opers.end(),
+        auto remove_iter = ranges::remove_if(cur_all_opers,
             [&](const infrast::Oper& rhs) -> bool {
                 return rhs.mood_ratio < m_mood_threshold;
-            });
+            }).begin();
         cur_all_opers.erase(remove_iter, cur_all_opers.end());
         Log.trace("after mood filter, opers size:", cur_all_opers.size());
         for (auto opt_iter = m_optimal_combs.begin(); opt_iter != m_optimal_combs.end();) {
             Log.trace("to find", opt_iter->skills.begin()->names.front());
-            auto find_iter = std::find_if(
-                cur_all_opers.cbegin(), cur_all_opers.cend(),
+            auto find_iter = ranges::find_if(cur_all_opers,
                 [&](const infrast::Oper& lhs) -> bool {
                     if (lhs.skills != opt_iter->skills) {
                         return false;
@@ -538,17 +532,13 @@ bool asst::InfrastProductionTask::opers_choose()
                     else {
                         OcrWithPreprocessImageAnalyzer name_analyzer(lhs.name_img);
                         name_analyzer.set_replace(
-                            std::dynamic_pointer_cast<OcrTaskInfo>(
-                                Task.get("CharsNameOcrReplace"))
-                            ->replace_map);
+                            Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map);
                         Log.trace("Analyze name filter");
                         if (!name_analyzer.analyze()) {
                             return false;
                         }
                         std::string name = name_analyzer.get_result().front().text;
-                        return std::find(
-                            opt_iter->name_filter.cbegin(), opt_iter->name_filter.cend(), name)
-                            != opt_iter->name_filter.cend();
+                        return ranges::find(std::as_const(opt_iter->name_filter), name) != opt_iter->name_filter.cend();
                     }
                 });
 
@@ -571,8 +561,7 @@ bool asst::InfrastProductionTask::opers_choose()
                 m_ctrler->click(find_iter->rect);
             }
             {
-                auto avlb_iter = std::find_if(
-                    m_all_available_opers.cbegin(), m_all_available_opers.cend(),
+                auto avlb_iter = ranges::find_if(m_all_available_opers,
                     [&](const infrast::Oper& lhs) -> bool {
                         int dist = HashImageAnalyzer::hamming(lhs.face_hash, find_iter->face_hash);
                         Log.debug("opers_choose | face hash dist", dist);

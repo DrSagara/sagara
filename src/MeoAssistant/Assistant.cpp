@@ -1,9 +1,9 @@
 #include "Assistant.h"
 
 #include <ctime>
+#include "AsstRanges.hpp"
 
 #include <meojson/json.hpp>
-#include <opencv2/opencv.hpp>
 
 #include "AsstUtils.hpp"
 #include "Controller.h"
@@ -87,8 +87,8 @@ asst::Assistant::TaskId asst::Assistant::append_task(const std::string& type, co
 #define ASST_ASSISTANT_APPEND_TASK_FROM_STRING_IF_BRANCH(TASK) \
 else if (type == TASK::TaskType) { ptr = std::make_shared<TASK>(task_callback, static_cast<void*>(this)); }
 
-    if (false) {}
-    ASST_ASSISTANT_APPEND_TASK_FROM_STRING_IF_BRANCH(FightTask)
+    if constexpr (false) {}
+        ASST_ASSISTANT_APPEND_TASK_FROM_STRING_IF_BRANCH(FightTask)
         ASST_ASSISTANT_APPEND_TASK_FROM_STRING_IF_BRANCH(StartUpTask)
         ASST_ASSISTANT_APPEND_TASK_FROM_STRING_IF_BRANCH(CloseDownTask)
         ASST_ASSISTANT_APPEND_TASK_FROM_STRING_IF_BRANCH(AwardTask)
@@ -139,7 +139,7 @@ bool asst::Assistant::set_task_params(TaskId task_id, const std::string& params)
     }
     auto& json = ret.value();
 
-    bool setted = false;
+    bool is_set = false;
     std::unique_lock<std::mutex> lock(m_mutex);
     for (auto&& [id, ptr] : m_tasks_list) {
         if (id != task_id) {
@@ -147,11 +147,11 @@ bool asst::Assistant::set_task_params(TaskId task_id, const std::string& params)
         }
         bool enable = json.get("enable", true);
         ptr->set_enable(enable);
-        setted = ptr->set_params(json);
+        is_set = ptr->set_params(json);
         break;
     }
 
-    return setted;
+    return is_set;
 }
 
 std::vector<uchar> asst::Assistant::get_image() const
@@ -169,6 +169,21 @@ bool asst::Assistant::ctrler_click(int x, int y, bool block)
     }
     m_ctrler->click(Point(x, y), block);
     return true;
+}
+
+std::string asst::Assistant::get_uuid() const
+{
+    return m_uuid;
+}
+
+std::vector<Assistant::TaskId> asst::Assistant::get_tasks_list() const
+{
+    std::vector<TaskId> result;
+    std::unique_lock<std::mutex> lock(m_mutex);
+    for (const auto& id : m_tasks_list | views::keys) {
+        result.emplace_back(id);
+    }
+    return result;
 }
 
 bool asst::Assistant::start(bool block)
@@ -212,7 +227,7 @@ void Assistant::working_proc()
 {
     LogTraceFunction;
 
-    std::vector<TaskId> runned_tasks;
+    std::vector<TaskId> finished_tasks;
     while (!m_thread_exit) {
         //LogTraceScope("Assistant::working_proc Loop");
 
@@ -232,7 +247,7 @@ void Assistant::working_proc()
                 .set_status(m_status);
 
             bool ret = task_ptr->run();
-            runned_tasks.emplace_back(id);
+            finished_tasks.emplace_back(id);
 
             lock.lock();
             if (!m_tasks_list.empty()) {
@@ -247,9 +262,9 @@ void Assistant::working_proc()
             task_callback(run_msg, callback_json, this);
 
             if (!m_thread_idle && m_tasks_list.empty()) {
-                callback_json["runned_tasks"] = json::array(runned_tasks);
+                callback_json["finished_tasks"] = json::array(finished_tasks);
                 task_callback(AsstMsg::AllTasksCompleted, callback_json, this);
-                runned_tasks.clear();
+                finished_tasks.clear();
             }
 
             auto delay = Resrc.cfg().get_options().task_delay;
@@ -259,7 +274,7 @@ void Assistant::working_proc()
         }
         else {
             m_thread_idle = true;
-            runned_tasks.clear();
+            finished_tasks.clear();
             Log.flush();
             m_condvar.wait(lock);
         }
@@ -295,7 +310,9 @@ void Assistant::task_callback(AsstMsg msg, const json::value& detail, void* cust
 {
     auto p_this = static_cast<Assistant*>(custom_arg);
     json::value more_detail = detail;
-    more_detail["uuid"] = p_this->m_uuid;
+    if (!more_detail.contains("uuid")) {
+        more_detail["uuid"] = p_this->m_uuid;
+    }
 
     switch (msg) {
     case AsstMsg::InternalError:

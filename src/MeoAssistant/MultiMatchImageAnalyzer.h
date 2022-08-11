@@ -8,11 +8,19 @@ namespace asst
     public:
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
         MultiMatchImageAnalyzer(const cv::Mat& image, const Rect& roi, std::string templ_name, double templ_thres);
-        virtual ~MultiMatchImageAnalyzer() = default;
+        virtual ~MultiMatchImageAnalyzer() override = default;
 
         virtual bool analyze() override;
 
-        void sort_result_horizontal(); // 按位置排序，左上角的排在前面
+        // 按位置排序
+        // 1 - 2 - 3
+        // 4 - 5 - 6
+        void sort_result_horizontal();
+
+        // 按位置排序
+        // 1 - 3 - 5
+        // 2 - 4 - 6
+        void sort_result_vertical();
 
         void set_mask_range(int lower, int upper) noexcept;
         void set_mask_range(std::pair<int, int> mask_range) noexcept;

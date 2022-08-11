@@ -40,11 +40,9 @@ namespace asst
         virtual AbstractTask& set_task_id(int task_id) noexcept;
 
         template<typename PluginType>
-        std::shared_ptr<PluginType> regiseter_plugin()
+        std::shared_ptr<PluginType> register_plugin()
+        requires std::derived_from<PluginType, AbstractTaskPlugin> // Plugin must inherit AbstractTaskPlugin
         {
-            static_assert(std::is_base_of<AbstractTaskPlugin, PluginType>::value,
-                "Plugin must inherit AbstractTaskPlugin");
-
             auto plugin = std::make_shared<PluginType>(m_callback, m_callback_arg, m_task_chain);
             m_plugins.emplace(plugin);
             return plugin;
@@ -63,6 +61,7 @@ namespace asst
         virtual bool on_run_fails() { return true; }
         virtual void callback(AsstMsg msg, const json::value& detail);
         virtual void click_return_button();
+        void save_image();
 
         json::value basic_info_with_what(std::string what) const;
         bool sleep(unsigned millisecond);

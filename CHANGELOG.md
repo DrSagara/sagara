@@ -1,2 +1,12 @@
-- 更新 `未尽篇章` 活动关卡掉落数据、地图资源
-- 其他的一些小优化和修复
+- 新增支持 `理想城：长夏狂欢季` 活动关卡导航 @ABA2396 @MistEO
+- 更新 `理想城：长夏狂欢季` 掉落识别、自动战斗地图数据 @MistEO @yuanyuan3060
+- 更新 公招 `傀影`, `巫恋`, `刻刀` 的数据 @zzyyyl
+- 新增支持 肉鸽 是否投资源石锭选项 @et2012
+- 修复 国际服肉鸽 boss 关卡不能识别的问题 @cookie223
+- 修复剿灭不勾选 `全权委托` 的问题 @MistEO
+- 修复关闭模拟器、开机自启动的一些问题 @cglcv
+- 修复 UI 启动时的工作目录设置 @BombaxCeiba
+- 修复编译问题、项目代码整理 @horror-proton @ChingCdesu @lhhxxxxx
+- 优化调整界面布局 @ABA2396
+- Github labeler 设置 @zzyyyl
+- Add English issue template @zzyyyl

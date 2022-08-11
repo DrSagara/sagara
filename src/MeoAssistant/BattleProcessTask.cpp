@@ -3,6 +3,9 @@
 #include <thread>
 #include <chrono>
 #include <future>
+#include "AsstRanges.hpp"
+
+#include "NoWarningCV.h"
 
 #include "Controller.h"
 #include "Resource.h"
@@ -165,9 +168,7 @@ bool asst::BattleProcessTask::analyze_opers_preview()
         OcrWithPreprocessImageAnalyzer name_analyzer(image);
         name_analyzer.set_task_info("BattleOperName");
         name_analyzer.set_replace(
-            std::dynamic_pointer_cast<OcrTaskInfo>(
-                Task.get("CharsNameOcrReplace"))
-            ->replace_map);
+            Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map);
 
         std::string oper_name = "Unknown";
         if (name_analyzer.analyze()) {
@@ -179,7 +180,7 @@ bool asst::BattleProcessTask::analyze_opers_preview()
         bool not_found = true;
         // 找出这个干员是哪个组里的，以及他的技能用法等
         for (const auto& [group_name, deploy_opers] : m_copilot_data.groups) {
-            auto iter = std::find_if(deploy_opers.cbegin(), deploy_opers.cend(),
+            auto iter = ranges::find_if(deploy_opers,
                 [&](const BattleDeployOper& deploy) -> bool {
                     return deploy.name == oper_name;
                 });
@@ -219,7 +220,7 @@ bool asst::BattleProcessTask::update_opers_info(const cv::Mat& image)
     }
     const auto& cur_opers_info = analyzer.get_opers();
     // 除非主动使用，不然可用干员数任何情况下都不会减少
-    // 主动使用会 earse, 所以少了就是识别错了
+    // 主动使用会 erase, 所以少了就是识别错了
     if (cur_opers_info.size() < m_cur_opers_info.size()) {
         Log.error(__FUNCTION__, "Decrease in staff, Just return");
         return false;
@@ -249,7 +250,7 @@ bool asst::BattleProcessTask::update_opers_info(const cv::Mat& image)
         // 干员也可能是撤退下来的，把所有已使用的都拿出来比较下
         for (auto iter = m_all_opers_info.cbegin(); iter != m_all_opers_info.cend(); ++iter) {
             const std::string& key = iter->first;
-            if (pre_opers_info.find(key) == pre_opers_info.cend()) {
+            if (!pre_opers_info.contains(key)) {
                 ranged_iters.emplace_back(iter);
             }
         }
@@ -280,9 +281,7 @@ bool asst::BattleProcessTask::update_opers_info(const cv::Mat& image)
             OcrWithPreprocessImageAnalyzer name_analyzer(m_ctrler->get_image());
             name_analyzer.set_task_info("BattleOperName");
             name_analyzer.set_replace(
-                std::dynamic_pointer_cast<OcrTaskInfo>(
-                    Task.get("CharsNameOcrReplace"))
-                ->replace_map);
+                Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map);
 
             if (name_analyzer.analyze()) {
                 name_analyzer.sort_result_by_score();
@@ -331,6 +330,10 @@ bool asst::BattleProcessTask::do_action(const BattleAction& action)
     case BattleActionType::BulletTime:
         action_desc = "子弹时间";
         break;
+    // TODO 其他情况
+    case BattleActionType::SkillUsage:
+    case BattleActionType::UseAllSkill:
+    case BattleActionType::Output:;
     }
     details["action"] = action_desc;
     details["doc"] = action.doc;
@@ -376,6 +379,8 @@ bool asst::BattleProcessTask::do_action(const BattleAction& action)
     case BattleActionType::SkillDaemon:
         ret = wait_to_end(action);
         break;
+    // TODO 其他情况
+    case BattleActionType::UseAllSkill:;
     }
     sleep_with_possible_skill(action.rear_delay);
 
@@ -483,10 +488,8 @@ bool asst::BattleProcessTask::oper_deploy(const BattleAction& action)
     Point placed_point = m_side_tile_info[action.location].pos;
 
     Rect placed_rect{ placed_point.x ,placed_point.y, 0, 0 };
-    int dist = static_cast<int>(
-        std::sqrt(
-            (std::pow(std::abs(placed_point.x - oper_rect.x), 2))
-            + (std::pow(std::abs(placed_point.y - oper_rect.y), 2))));
+    int dist = static_cast<int>(Point::distance(
+        placed_point, { oper_rect.x + oper_rect.width / 2, oper_rect.y + oper_rect.height / 2 }));
     // 1000 是随便取的一个系数，把整数的 pre_delay 转成小数用的
     int duration = static_cast<int>(swipe_oper_task_ptr->pre_delay / 1000.0 * dist * log10(dist));
     m_ctrler->swipe(oper_rect, placed_rect, duration, true, 0);
@@ -507,15 +510,8 @@ bool asst::BattleProcessTask::oper_deploy(const BattleAction& action)
         Point direction = DirectionMapping.at(action.direction);
 
         // 将方向转换为实际的 swipe end 坐标点
-        Point end_point = placed_point;
         constexpr int coeff = 500;
-        end_point.x += direction.x * coeff;
-        end_point.y += direction.y * coeff;
-
-        end_point.x = std::max(0, end_point.x);
-        end_point.x = std::min(end_point.x, WindowWidthDefault);
-        end_point.y = std::max(0, end_point.y);
-        end_point.y = std::min(end_point.y, WindowHeightDefault);
+        Point end_point = placed_point + (direction * coeff);
 
         m_ctrler->swipe(placed_point, end_point, swipe_oper_task_ptr->rear_delay, true, 100);
     }
@@ -600,7 +596,7 @@ bool asst::BattleProcessTask::try_possible_skill(const cv::Mat& image)
     MatchImageAnalyzer analyzer(image);
     analyzer.set_task_info(task_ptr);
     bool used = false;
-    for (auto& [name, info] : m_used_opers) {
+    for (auto& info : m_used_opers | views::values) {
         if (info.info.skill_usage != BattleSkillUsage::Possibly
             && info.info.skill_usage != BattleSkillUsage::Once) {
             continue;
@@ -650,12 +646,12 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
 {
     /*
      * * dlx 算法简介
-     * 
+     *
      * https://oi-wiki.org/search/dlx/
      *
-     * 
+     *
      * * dlx 算法作用
-     * 
+     *
      * 在形如:
      * a: 10010
      * b: 01110
@@ -672,33 +668,33 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
      *
      *
      * * dlx 算法建模
-     * 
+     *
      * dlx 的列分为 [组号] [干员号] 两部分
      * dlx 的行分为 [可能的选择对] [不选择该干员] 两部分
-     * 
+     *
      * [可能的选择对]:
      * 每行对应一种可能的选择,
      * 将组号，干员号对应位置的列设为1
-     * 
+     *
      * [不选择该干员]:
      * 每行对应不选择某干员的情况,
      * 将干员号对应位置的列设为1
      *
      *
      * * dlx 建模示例
-     * 
+     *
      * 有以下分组:
      * a: {1, 3, 4}
      * b: {2, 3, 5}
      * c: {1, 2, 3}
      * 拥有的干员:
      * {1, 2, 4, 5, 6}
-     * 
+     *
      * 先处理出所有可能的情况:
      * a: {1, 4}
      * b: {2, 5}
      * c: {1, 2}
-     * 
+     *
      * 构造表:
      *   abc 1245
      * 1 100 1000 <a, 1>
@@ -711,20 +707,20 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
      * 9 000 0100 ~2
      * 9 000 0010 ~4
      * A 000 0001 ~5
-     * 
+     *
      * 使用dlx求得一组解:
      * 一个可能的结果是:
      * 行号 {2, 3, 5, A}
      * 即 {<a, 4>, <b, 2>, <c, 1>, ~5}
-     * 
+     *
      * 输出分组结果:
      * a: 4
      * b: 2
      * c: 1
-     * 
+     *
      */
 
-    // dlx 算法模板类
+     // dlx 算法模板类
     class DancingLinksModel
     {
     private:
@@ -734,7 +730,8 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
         std::vector<size_t> left, right, up, down;
         std::vector<size_t> column, row;
 
-        void remove(const size_t &column_id) {
+        void remove(const size_t& column_id)
+        {
             left[right[column_id]] = left[column_id];
             right[left[column_id]] = right[column_id];
             for (size_t i = down[column_id]; i != column_id; i = down[i]) {
@@ -746,7 +743,8 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
             }
         }
 
-        void recover(const size_t &column_id) {
+        void recover(const size_t& column_id)
+        {
             for (size_t i = up[column_id]; i != column_id; i = up[i]) {
                 for (size_t j = left[i]; j != i; j = left[j]) {
                     up[down[j]] = down[up[j]] = j;
@@ -761,19 +759,20 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
         size_t answer_stack_size{};
         std::vector<size_t> answer_stack;
 
-        DancingLinksModel(const size_t &max_node_num, const size_t &max_ans_size) :
-                first(max_node_num),
-                size(max_node_num),
-                left(max_node_num),
-                right(max_node_num),
-                up(max_node_num),
-                down(max_node_num),
-                column(max_node_num),
-                row(max_node_num),
-                answer_stack(max_ans_size) {
-        }
+        DancingLinksModel(const size_t& max_node_num, const size_t& max_ans_size) :
+            first(max_node_num),
+            size(max_node_num),
+            left(max_node_num),
+            right(max_node_num),
+            up(max_node_num),
+            down(max_node_num),
+            column(max_node_num),
+            row(max_node_num),
+            answer_stack(max_ans_size)
+        {}
 
-        void build(const size_t &column_id) {
+        void build(const size_t& column_id)
+        {
             for (size_t i = 0; i <= column_id; i++) {
                 left[i] = i - 1;
                 right[i] = i + 1;
@@ -786,7 +785,8 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
             size.clear();
         }
 
-        void insert(const size_t &row_id, const size_t &column_id) {
+        void insert(const size_t& row_id, const size_t& column_id)
+        {
             column[++index] = column_id;
             row[index] = row_id;
             ++size[column_id];
@@ -796,7 +796,8 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
             down[column_id] = index;
             if (!first[row_id]) {
                 first[row_id] = left[index] = right[index] = index;
-            } else {
+            }
+            else {
                 right[index] = right[first[row_id]];
                 left[right[first[row_id]]] = index;
                 left[index] = first[row_id];
@@ -804,7 +805,8 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
             }
         }
 
-        bool dance(const size_t &depth) {
+        bool dance(const size_t& depth)
+        {
             if (!right[0]) {
                 answer_stack_size = depth;
                 return true;
@@ -841,10 +843,10 @@ asst::BattleProcessTask::get_char_allocation_for_each_group(
     std::unordered_map<CharNameType, size_t> char_name_mapping;
     std::set<CharNameType> char_set(char_list.begin(), char_list.end());
 
-    for (auto &i: group_list) {
+    for (auto& i : group_list) {
         group_name_mapping[i.first] = group_id_mapping.size();
         group_id_mapping.emplace_back(i.first);
-        for (auto &j: i.second) {
+        for (auto& j : i.second) {
             if (char_set.contains(j)) {
                 node_id_mapping.emplace_back(i.first, j);
                 if (!char_name_mapping.contains(j)) {

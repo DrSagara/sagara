@@ -1,5 +1,7 @@
 #include "AbstractImageAnalyzer.h"
 
+#include "NoWarningCV.h"
+
 #include "AsstUtils.hpp"
 #include "Controller.h"
 #include "Logger.hpp"
@@ -27,12 +29,6 @@ void asst::AbstractImageAnalyzer::set_image(const cv::Mat image)
 #ifdef ASST_DEBUG
     m_image_draw = image.clone();
 #endif
-}
-
-void asst::AbstractImageAnalyzer::set_image(const cv::Mat image, const Rect& roi)
-{
-    set_image(image);
-    m_roi = empty_rect_to_full(roi, image);
 }
 
 void asst::AbstractImageAnalyzer::set_roi(const Rect& roi) noexcept

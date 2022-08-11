@@ -1,5 +1,7 @@
 #include "BattleFormationTask.h"
 
+#include "AsstRanges.hpp"
+
 #include "Resource.h"
 #include "Controller.h"
 #include "ProcessTask.h"
@@ -29,7 +31,7 @@ bool asst::BattleFormationTask::_run()
     json::value info = basic_info_with_what("BattleFormation");
     auto& details = info["details"];
     auto& formation = details["formation"];
-    for (const auto& [name, oper_vec] : m_groups) {
+    for (const auto& name : m_groups | views::keys) {
         formation.array_emplace(name);
     }
     callback(AsstMsg::SubTaskExtraInfo, info);
@@ -55,7 +57,7 @@ bool asst::BattleFormationTask::select_opers_in_cur_page()
 {
     auto formation_task_ptr = Task.get("BattleQuickFormationOCR");
     OcrWithFlagTemplImageAnalyzer name_analyzer(m_ctrler->get_image());
-    auto& ocr_replace = std::dynamic_pointer_cast<OcrTaskInfo>(Task.get("CharsNameOcrReplace"))->replace_map;
+    auto& ocr_replace = Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map;
     name_analyzer.set_task_info("BattleQuickFormation-OperNameFlag", "BattleQuickFormationOCR");
     name_analyzer.set_replace(ocr_replace);
     if (!name_analyzer.analyze()) {

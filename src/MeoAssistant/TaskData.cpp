@@ -1,6 +1,7 @@
 #include "TaskData.h"
 
 #include <algorithm>
+#include "AsstRanges.hpp"
 
 #include <meojson/json.hpp>
 
@@ -9,25 +10,9 @@
 #include "TemplResource.h"
 #include "Logger.hpp"
 
-std::shared_ptr<const asst::TaskInfo> asst::TaskData::get(const std::string& name) const noexcept
-{
-    if (auto iter = m_all_tasks_info.find(name);
-        iter != m_all_tasks_info.cend()) {
-        return iter->second;
-    }
-    else {
-        return nullptr;
-    }
-}
-
 const std::unordered_set<std::string>& asst::TaskData::get_templ_required() const noexcept
 {
     return m_templ_required;
-}
-
-std::shared_ptr<asst::TaskInfo> asst::TaskData::get(const std::string& name)
-{
-    return m_all_tasks_info[name];
 }
 
 bool asst::TaskData::parse(const json::value& json)
@@ -35,11 +20,11 @@ bool asst::TaskData::parse(const json::value& json)
     LogTraceFunction;
 
     auto to_lower = [](char c) -> char {
-        return char(std::tolower(c));
+        return static_cast<char>(std::tolower(c));
     };
     for (const auto& [name, task_json] : json.as_object()) {
         std::string algorithm_str = task_json.get("algorithm", "matchtemplate");
-        std::transform(algorithm_str.begin(), algorithm_str.end(), algorithm_str.begin(), to_lower);
+        ranges::transform(algorithm_str, algorithm_str.begin(), to_lower);
         auto algorithm = AlgorithmType::Invalid;
         if (algorithm_str == "matchtemplate") {
             algorithm = AlgorithmType::MatchTemplate;
@@ -74,7 +59,7 @@ bool asst::TaskData::parse(const json::value& json)
                 "specialThreshold", 0);
             if (auto opt = task_json.find<json::array>("maskRange")) {
                 auto& mask_range = *opt;
-                match_task_info_ptr->mask_range = std::make_pair((int)mask_range[0], (int)mask_range[1]);
+                match_task_info_ptr->mask_range = std::make_pair(static_cast<int>(mask_range[0]), static_cast<int>(mask_range[1]));
             }
 
             task_info_ptr = match_task_info_ptr;
@@ -96,13 +81,13 @@ bool asst::TaskData::parse(const json::value& json)
         {
             auto hash_task_info_ptr = std::make_shared<HashTaskInfo>();
             for (const json::value& hash : task_json.at("hash").as_array()) {
-                hash_task_info_ptr->hashs.emplace_back(hash.as_string());
+                hash_task_info_ptr->hashes.emplace_back(hash.as_string());
             }
             hash_task_info_ptr->dist_threshold = task_json.get("threshold", 0);
 
             if (auto opt = task_json.find<json::array>("maskRange")) {
                 auto& mask_range = *opt;
-                hash_task_info_ptr->mask_range = std::make_pair((int)mask_range[0], (int)mask_range[1]);
+                hash_task_info_ptr->mask_range = std::make_pair(static_cast<int>(mask_range[0]), static_cast<int>(mask_range[1]));
             }
             hash_task_info_ptr->bound = task_json.get("bound", true);
 
@@ -113,7 +98,7 @@ bool asst::TaskData::parse(const json::value& json)
         task_info_ptr->algorithm = algorithm;
         task_info_ptr->name = name;
         std::string action = task_json.get("action", "donothing");
-        std::transform(action.begin(), action.end(), action.begin(), to_lower);
+        ranges::transform(action, action.begin(), to_lower);
         if (action == "clickself") {
             task_info_ptr->action = ProcessTaskAction::ClickSelf;
         }
@@ -128,12 +113,6 @@ bool asst::TaskData::parse(const json::value& json)
         }
         else if (action == "clickrect") {
             task_info_ptr->action = ProcessTaskAction::ClickRect;
-            const json::value& rect_json = task_json.at("specificRect");
-            task_info_ptr->specific_rect = Rect(
-                rect_json[0].as_integer(),
-                rect_json[1].as_integer(),
-                rect_json[2].as_integer(),
-                rect_json[3].as_integer());
         }
         else if (action == "swipetotheleft") {
             task_info_ptr->action = ProcessTaskAction::SwipeToTheLeft;
@@ -154,8 +133,8 @@ bool asst::TaskData::parse(const json::value& json)
 
         task_info_ptr->max_times = task_json.get("maxTimes", INT_MAX);
         if (auto opt = task_json.find<json::array>("exceededNext")) {
-            for (const json::value& excceed_next : opt.value()) {
-                task_info_ptr->exceeded_next.emplace_back(excceed_next.as_string());
+            for (const json::value& exceed_next : opt.value()) {
+                task_info_ptr->exceeded_next.emplace_back(exceed_next.as_string());
             }
         }
         if (auto opt = task_json.find<json::array>("onErrorNext")) {
@@ -172,10 +151,10 @@ bool asst::TaskData::parse(const json::value& json)
         }
         if (auto opt = task_json.find<json::array>("roi")) {
             auto& roi_arr = *opt;
-            int x = (int)roi_arr[0];
-            int y = (int)roi_arr[1];
-            int width = (int)roi_arr[2];
-            int height = (int)roi_arr[3];
+            int x = static_cast<int>(roi_arr[0]);
+            int y = static_cast<int>(roi_arr[1]);
+            int width = static_cast<int>(roi_arr[2]);
+            int height = static_cast<int>(roi_arr[3]);
 #ifdef ASST_DEBUG
             if (x + width > WindowWidthDefault || y + height > WindowHeightDefault) {
                 m_last_error = name + " roi is out of bounds";
@@ -211,6 +190,18 @@ bool asst::TaskData::parse(const json::value& json)
         }
         else {
             task_info_ptr->rect_move = Rect();
+        }
+
+        if (auto opt = task_json.find<json::array>("specificRect")) {
+            auto& rect_arr = opt.value();
+            task_info_ptr->specific_rect = Rect(
+                rect_arr[0].as_integer(),
+                rect_arr[1].as_integer(),
+                rect_arr[2].as_integer(),
+                rect_arr[3].as_integer());
+        }
+        else {
+            task_info_ptr->specific_rect = Rect();
         }
 
         m_all_tasks_info[name] = task_info_ptr;

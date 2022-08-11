@@ -22,7 +22,7 @@ namespace asst
         };
 
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
-        virtual ~InfrastOperImageAnalyzer() = default;
+        virtual ~InfrastOperImageAnalyzer() override = default;
         InfrastOperImageAnalyzer(const cv::Mat image, const Rect& roi) = delete;
 
         virtual bool analyze() override;
@@ -54,10 +54,6 @@ namespace asst
         virtual void set_roi(const Rect& roi) noexcept override
         {
             AbstractImageAnalyzer::set_roi(roi);
-        }
-        virtual void set_image(const cv::Mat image, const Rect& roi)
-        {
-            AbstractImageAnalyzer::set_image(image, roi);
         }
 
         void oper_detect();

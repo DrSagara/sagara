@@ -6,7 +6,7 @@
 
 <br>
 <div>
-    <img alt="C++" src="https://img.shields.io/badge/c++-17-%2300599C?logo=cplusplus">
+    <img alt="C++" src="https://img.shields.io/badge/c++-20-%2300599C?logo=cplusplus">
 </div>
 <div>
     <img alt="platform" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blueviolet">
@@ -18,7 +18,7 @@
 </div>
 <br>
 
-[README in English](README-en.md)
+[中文（简体）](README.md) | [中文（繁體）](README_zh-TW.md) | [English](README_en-US.md) | [日本語](README_ja-JP.md)
 
 MAA 的意思是 MAA Assistant Arknights
 
@@ -41,8 +41,8 @@ MAA 的意思是 MAA Assistant Arknights
 
 话不多说，看图！  
 
-![image](https://user-images.githubusercontent.com/99072975/177110402-513b8267-380f-47b2-aeb3-04d8d1e1c850.png)
-![image](https://user-images.githubusercontent.com/99072975/177110410-ad4f84f5-e94f-49aa-954b-25d49aa7f6f9.png)
+![image](https://user-images.githubusercontent.com/99072975/181418126-54d3d50e-f405-4edd-a426-a27e9a465286.png)
+![image](https://user-images.githubusercontent.com/99072975/181418131-f4eefa07-6623-470e-ba4a-0ad15cb8aa91.png)
 ![image](https://user-images.githubusercontent.com/99072975/172045163-e9ead337-eb62-4f9f-a354-9e302f767a52.png)
 
 
@@ -69,8 +69,7 @@ MAA 的意思是 MAA Assistant Arknights
 
 1. 请根据 [模拟器支持情况](docs/模拟器支持.md)，进行对应的操作。
 2. 修改模拟器分辨率为 `16:9` 比例，最低 `1280 * 720`, 更高不限。
-3. 解压压缩包，到没有中文或特殊符号的文件夹路径。
-4. Enjoy it!
+3. 开始使用吧！
 
 更多使用说明请参考 [详细介绍](docs/详细介绍.md)
 
@@ -86,13 +85,13 @@ MAA 的意思是 MAA Assistant Arknights
 ## 外服支持
 
 - 国际服（美服）  
-  支持基本的刷理智、公招识别、访问好友、领取奖励功能，请参考 [说明](resource/global/YoStarEN/readme.md)
+  支持基本的刷理智、访问好友、领取奖励、自动肉鸽（测试版本）、公招识别，请参考 [说明](resource/global/YoStarEN/readme.md)
 - 日服  
-  支持基本的刷理智、公招识别、访问好友、领取奖励功能，请参考 [说明](resource/global/YoStarJP/readme.md)
+  支持基本的刷理智、自动公招、访问好友、领取奖励、自动肉鸽（测试版本）、公招识别，请参考 [说明](resource/global/YoStarJP/readme.md)
 - 韩服  
   支持基本的刷理智功能，请参考 [说明](resource/global/YoStarKR/readme.md)
 - 繁中服  
-  支持基本的刷理智功能，请参考 [说明](resource/global/txwy/readme.md)
+  支持基本的刷理智、自动公招、公招识别功能，请参考 [说明](resource/global/txwy/readme.md)
 
 由于外服用户较少及项目人手不足的问题，外服目前都仅适配了基本的功能。若您有强需求，欢迎在 [讨论区](https://github.com/MaaAssistantArknights/MaaAssistantArknights/discussions) 催更，~~或加入我们一起建设 MAA~~
 
@@ -152,6 +151,7 @@ MAA 的意思是 MAA Assistant Arknights
 - [Golang 接口](src/Golang/maa/)：[集成示例](src/Golang/cli.go)（已停止维护 orz）
 - [Dart 接口](src/dart/)
 - [Java 接口](src/Java/Maaj/src/main/java/com/iguigui/maaj/easySample/MeoAssistant.java)：[集成示例](src/Java/Maaj/src/main/java/com/iguigui/maaj/easySample/MaaJavaSample.java)
+- [Rust 接口](src/Rust/src/maa_sys/)：[HTTP 接口](src/Rust)
 - [HTTP 接口](src/Java/Maaj/Readme.md)
 - [集成文档](docs/集成文档.md)
 - [回调消息协议](docs/回调消息协议.md)
@@ -170,7 +170,7 @@ MAA 的意思是 MAA Assistant Arknights
 ## 广告
 
 [用户交流群（Telegram 群）](https://t.me/+Mgc2Zngr-hs3ZjU1)  
-自动战斗 JSON 作业分享: <https://www.prts.plus> , [QQ 一群](https://jq.qq.com/?_wv=1027&k=1giyMpPb)（已满），[QQ 二群](https://jq.qq.com/?_wv=1027&k=R3oleoKc)，[QQ 三群](https://jq.qq.com/?_wv=1027&k=mKdOnhWV)    
+自动战斗 JSON 作业分享: <https://www.prts.plus> , [QQ 一群（已满）](https://jq.qq.com/?_wv=1027&k=ig786LJZ)，[QQ 二群（已满）](https://jq.qq.com/?_wv=1027&k=R3oleoKc)，[QQ 三群](https://jq.qq.com/?_wv=1027&k=mKdOnhWV)    
 [Bilibili 直播间](https://live.bilibili.com/2808861)：每晚直播敲代码，近期很长一段时间应该都是在写本软件~  
 [舟无关技术交流 & 吹水群（QQ 群）](https://jq.qq.com/?_wv=1027&k=ypbzXcA2)：内卷地狱！  
 [开发者群（QQ 群）](https://jq.qq.com/?_wv=1027&k=JM9oCk3C)  

@@ -7,7 +7,7 @@ namespace asst
     {
     public:
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
-        virtual ~InfrastFacilityImageAnalyzer() = default;
+        virtual ~InfrastFacilityImageAnalyzer() override = default;
         InfrastFacilityImageAnalyzer(const cv::Mat image, const Rect& roi) = delete;
 
         virtual bool analyze() override;
@@ -52,10 +52,6 @@ namespace asst
         virtual void set_roi(const Rect& roi) noexcept override
         {
             AbstractImageAnalyzer::set_roi(roi);
-        }
-        virtual void set_image(const cv::Mat image, const Rect& roi)
-        {
-            AbstractImageAnalyzer::set_image(image, roi);
         }
 
         // key：设施名，value：所有这种设施的当前Rect（例如所有制造站的位置）

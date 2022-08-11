@@ -23,7 +23,7 @@ namespace asst
         };
     public:
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
-        virtual ~BattleImageAnalyzer() = default;
+        virtual ~BattleImageAnalyzer() override = default;
 
         bool set_target(int target);
         void set_pre_total_kills(int pre_total_kills);
@@ -39,6 +39,7 @@ namespace asst
         int get_cost() const noexcept;
 
         void clear() noexcept;
+        void sort_opers_by_cost();  // 高费在前，费用降序
 
     protected:
         bool opers_analyze();   // 识别干员
@@ -53,6 +54,7 @@ namespace asst
         bool kills_analyze();   // 识别击杀数
         bool cost_analyze();    // 识别费用
         bool vacancies_analyze();// 识别剩余可部署人数
+        bool flag_analyze();    // 识别暂停按钮
 
         int m_target = 0;                           // 待识别的目标
         int m_pre_total_kills = 0;                  // 之前的击杀总数，因为击杀数经常识别不准所以依赖外部传入作为参考

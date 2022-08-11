@@ -9,10 +9,11 @@
 - 刷理智（仅支持选择`当前关卡`）
 - 使用理智药恢复理智
 - 使用源石恢复理智
-- 指定次数
-- 公招计算
+- 刷理智指定
 - 访问好友
 - 领取日常奖励
+- 公招计算
+- 无限刷肉鸽（测试功能）
 
 ## Global (EN)
 
@@ -24,6 +25,7 @@ Now supports:
 - Restore with potion
 - Restore with Originite
 - Set the max number of auto battles
-- Recruitment calculate
 - Friends visit
 - Award collect
+- Recruitment calculate
+- Auto Roguelike (beta)

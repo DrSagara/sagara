@@ -2,7 +2,26 @@
 #include <fstream>
 #include <unordered_set>
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable: 5054 )
+#elif defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-enum-enum-conversion"
+#pragma clang diagnostic ignored "-Wdeprecated-anon-enum-enum-conversion"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion"
+#endif
 #include <opencv2/opencv.hpp>
+#ifdef _MSC_VER
+#pragma warning( pop )
+#elif defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+#include <ranges>
 #include <meojson/json.hpp>
 
 bool update_items_data(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir);
@@ -10,8 +29,11 @@ bool cvt_single_item_template(const std::filesystem::path& input, const std::fil
 
 bool update_infrast_data(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir);
 bool update_stages_data(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir);
+bool update_roguelike_recruit(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir, const std::filesystem::path& solution_dir);
 
 bool update_infrast_templates(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir);
+bool generate_english_roguelike_stage_name_replacement(const std::filesystem::path& ch_file, const std::filesystem::path& en_file);
+bool update_battle_chars_info(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir);
 
 int main([[maybe_unused]] int argc, char** argv)
 {
@@ -54,6 +76,9 @@ int main([[maybe_unused]] int argc, char** argv)
         return -1;
     }
 
+    // 这个 en_levels.json 是自己手动生成放进去的
+    generate_english_roguelike_stage_name_replacement(input_dir / "levels.json", cur_path / "en_levels.json");
+
     /* Update infrast data from Arknights-Bot-Resource*/
     std::cout << "------------Update infrast data------------" << std::endl;
     if (!update_infrast_data(input_dir, resource_dir)) {
@@ -68,10 +93,24 @@ int main([[maybe_unused]] int argc, char** argv)
         return -1;
     }
 
+    ///* Update roguelike recruit data from Arknights-Bot-Resource*/
+    //std::cout << "------------Update roguelike recruit data------------" << std::endl;
+    //if (!update_roguelike_recruit(input_dir, resource_dir, solution_dir)) {
+    //    std::cerr << "Update roguelike recruit data failed" << std::endl;
+    //    return -1;
+    //}
+
     /* Update stage.json from Penguin Stats*/
     std::cout << "------------Update stage.json------------" << std::endl;
     if (!update_stages_data(cur_path, solution_dir / "resource")) {
         std::cerr << "Update stages data failed" << std::endl;
+        return -1;
+    }
+
+    /* Update battle chars info from Arknights-Bot-Resource*/
+    std::cout << "------------Update battle chars info------------" << std::endl;
+    if (!update_battle_chars_info(input_dir, solution_dir / "resource")) {
+        std::cerr << "Update battle chars info failed" << std::endl;
         return -1;
     }
 
@@ -280,8 +319,8 @@ bool update_infrast_data(const std::filesystem::path& input_dir, const std::file
     // 这里面有些是手动修改的，要保留
     json::value& root = old_json;
     std::unordered_set<std::string> rooms;
-    for (auto& [_, buff_obj] : buffs) {
-        std::string raw_room_type = (std::string)buff_obj["roomType"];
+    for (auto& buff_obj : buffs | std::views::values) {
+        std::string raw_room_type = static_cast<std::string>(buff_obj["roomType"]);
 
         // 为了兼容老版本的字段 orz
         static const std::unordered_map<std::string, std::string> RoomTypeMapping = {
@@ -303,10 +342,10 @@ bool update_infrast_data(const std::filesystem::path& input_dir, const std::file
 
         rooms.emplace(room_type);
 
-        std::string key = (std::string)buff_obj["skillIcon"];
-        std::string name = (std::string)buff_obj["buffName"];
+        std::string key = static_cast<std::string>(buff_obj["skillIcon"]);
+        std::string name = static_cast<std::string>(buff_obj["buffName"]);
         // 这玩意里面有类似 xml 的东西，全删一下
-        std::string desc = (std::string)buff_obj["description"];
+        std::string desc = static_cast<std::string>(buff_obj["description"]);
         remove_xml(desc);
 
         auto& skill = root[room_type]["skills"][key];
@@ -414,5 +453,127 @@ bool update_infrast_templates(const std::filesystem::path& input_dir, const std:
         }
         cv::imwrite(out_file, cvt);
     }
+    return true;
+}
+
+bool update_roguelike_recruit(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir, const std::filesystem::path& solution_dir)
+{
+    std::string python_cmd;
+    std::filesystem::path python_file = solution_dir / "tools" / "RoguelikeResourceUpdater" / "generate_roguelike_recruit.py";
+    python_cmd = "python " + python_file.string() + " --input=\"" + input_dir.string() + "\" --output=\"" + output_dir.string() + "\"";
+    int python_ret = system(python_cmd.c_str());
+    if (python_ret != 0) {
+        return false;
+    }
+    return true;
+}
+
+bool generate_english_roguelike_stage_name_replacement(const std::filesystem::path& ch_file, const std::filesystem::path& en_file)
+{
+    auto ch_opt = json::open(ch_file);
+    auto en_opt = json::open(en_file);
+
+    if (!ch_opt || !en_opt) {
+        return false;
+    }
+
+    auto& ch_json = ch_opt.value();
+    auto& en_json = en_opt.value();
+
+    std::unordered_map<std::string, std::string> ch_levelid_name;
+    for (auto& stage_obj : ch_json.as_array()) {
+        // 肉鸽关卡全叫这个
+        if (stage_obj["code"].as_string() != "ISW-NO") {
+            continue;
+        }
+        ch_levelid_name[stage_obj["levelId"].as_string()] = stage_obj["name"].as_string();
+    }
+
+    json::array en_to_ch_vec;
+    for (auto& stage_obj : en_json.as_array()) {
+        // 肉鸽关卡全叫这个
+        if (stage_obj["code"].as_string() != "ISW-NO") {
+            continue;
+        }
+        std::string level_id = stage_obj["levelId"].as_string();
+        auto it = ch_levelid_name.find(level_id);
+        if (it == ch_levelid_name.cend()) {
+            std::cerr << "Unknown en stage id: " << level_id << std::endl;
+        }
+        json::array arr;
+        arr.emplace_back(stage_obj["name"].as_string());
+        arr.emplace_back(it->second);
+        en_to_ch_vec.emplace_back(std::move(arr));
+    }
+    std::ofstream ofs(en_file.parent_path() / "en_replace.json", std::ios::out);
+    ofs << en_to_ch_vec.format();
+    ofs.close();
+
+    return true;
+}
+
+bool update_battle_chars_info(const std::filesystem::path& input_dir, const std::filesystem::path& output_dir)
+{
+    const auto& input_chars_file = input_dir / "gamedata" / "excel" / "character_table.json";
+    const auto& input_range_file = input_dir / "gamedata" / "excel" / "range_table.json";
+
+    auto chars_opt = json::open(input_chars_file);
+    auto range_opt = json::open(input_range_file);
+    if (!chars_opt || !range_opt) {
+        return false;
+    }
+    auto& chars_json = chars_opt.value();
+    auto& range_json = range_opt.value();
+
+    json::value result;
+    auto& range = result["ranges"].as_object();
+    for (auto& [id, range_data] : range_json.as_object()) {
+        if (int direction = range_data["direction"].as_integer();
+            direction != 1) {
+            // 现在都是 1，朝右的，以后不知道会不会改，加个warning，真遇到再说
+            std::cout << "!!!Warning!!! range_id: " << id << " 's direction is " << std::to_string(direction) << std::endl;
+        }
+        json::array points;
+        for (auto& grids : range_data["grids"].as_array()) {
+            int x = grids["col"].as_integer();
+            int y = grids["row"].as_integer();
+            points.emplace_back(json::array{ x, y });
+        }
+        range.emplace(id, std::move(points));
+    }
+
+    auto& chars = result["chars"].as_object();
+    for (auto& [id, char_data] : chars_json.as_object()) {
+        json::value char_new_data;
+        std::string name = char_data["name"].as_string();
+
+        char_new_data["name"] = name;
+        if (name == "阿米娅") {
+            char_new_data["profession"] = "WARRIOR";
+            char_new_data["rangeId"] = json::array{
+                "1-1",
+                "1-1",
+                "1-1"
+            };
+        }
+        else {
+            char_new_data["profession"] = char_data["profession"];
+
+            const std::string& default_range = char_data.get("phases", 0, "rangeId", "0-1");
+            char_new_data["rangeId"] = json::array{
+                default_range,
+                char_data.get("phases", 1, "rangeId", default_range),
+                char_data.get("phases", 2, "rangeId", default_range),
+            };
+        }
+        char_new_data["rarity"] = static_cast<int>(char_data["rarity"]) + 1;
+
+        chars.emplace(id, std::move(char_new_data));
+    }
+
+    const auto& out_file = output_dir / "battle_data.json";
+    std::ofstream ofs(out_file, std::ios::out);
+    ofs << result.format(true) << std::endl;
+
     return true;
 }

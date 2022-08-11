@@ -9,7 +9,7 @@ namespace asst
         static constexpr size_t MaxNumOfSkills = 3;
     public:
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
-        virtual ~RoguelikeSkillSelectionImageAnalyzer() = default;
+        virtual ~RoguelikeSkillSelectionImageAnalyzer() override = default;
 
         virtual bool analyze() override;
 
@@ -23,10 +23,6 @@ namespace asst
         virtual void set_roi(const Rect& roi) noexcept override
         {
             AbstractImageAnalyzer::set_roi(roi);
-        }
-        virtual void set_image(const cv::Mat image, const Rect& roi)
-        {
-            AbstractImageAnalyzer::set_image(image, roi);
         }
 
         std::string name_analyze(const Rect& roi);

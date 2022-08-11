@@ -13,7 +13,7 @@ namespace asst
         ProcessTask(const AbstractTask& abs, std::vector<std::string> tasks_name);
         ProcessTask(AbstractTask&& abs, std::vector<std::string> tasks_name) noexcept;
 
-        virtual ~ProcessTask() = default;
+        virtual ~ProcessTask() override = default;
 
         virtual bool run() override;
 
@@ -25,6 +25,7 @@ namespace asst
     protected:
         virtual bool _run() override;
         virtual bool on_run_fails() override;
+        virtual json::value basic_info() const override;
 
         void exec_click_task(const Rect& matched_rect);
         void exec_swipe_task(ProcessTaskAction action);

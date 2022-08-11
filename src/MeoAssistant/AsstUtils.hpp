@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AsstConf.h"
+
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -45,19 +47,9 @@ namespace asst::utils
 
     template<typename map_t>
     inline std::string string_replace_all_batch(const std::string& src, const map_t& replace_pairs)
+    requires std::derived_from<typename map_t::value_type::first_type, std::string>
+          && std::derived_from<typename map_t::value_type::second_type, std::string>
     {
-        // 以下两个 static_assert 保证了 map_t 的实际类型，它可以是:
-        //     initializer_list<pair<string, string>>
-        //     vector<pair<string, string>>
-        //     unordered_map<string, string>
-        //     map<string, string>
-        // 但不能是
-        //     initializer_list<pair<string_view, string_view>>
-        // 等其它类型
-        static_assert(std::is_base_of<typename map_t::value_type::first_type, std::string>::value,
-            "type `map_t::value_type::first_type` is not allowed.");
-        static_assert(std::is_base_of<typename map_t::value_type::second_type, std::string>::value,
-            "type `map_t::value_type::second_type` is not allowed.");
         std::string str = src;
         for (const auto& [old_value, new_value] : replace_pairs) {
             _string_replace_all(str, old_value, new_value);
@@ -201,7 +193,9 @@ namespace asst::utils
         auto pipe_buffer = std::make_unique<char[]>(PipeBuffSize);
 
 #ifdef _WIN32
+        ASST_AUTO_DEDUCED_ZERO_INIT_START
         SECURITY_ATTRIBUTES pipe_sec_attr = { 0 };
+        ASST_AUTO_DEDUCED_ZERO_INIT_END
         pipe_sec_attr.nLength = sizeof(SECURITY_ATTRIBUTES);
         pipe_sec_attr.lpSecurityDescriptor = nullptr;
         pipe_sec_attr.bInheritHandle = TRUE;
@@ -209,35 +203,39 @@ namespace asst::utils
         HANDLE pipe_child_write = nullptr;
         CreatePipe(&pipe_read, &pipe_child_write, &pipe_sec_attr, PipeBuffSize);
 
+        ASST_AUTO_DEDUCED_ZERO_INIT_START
         STARTUPINFOA si = { 0 };
+        ASST_AUTO_DEDUCED_ZERO_INIT_END
         si.cb = sizeof(STARTUPINFO);
         si.dwFlags = STARTF_USESTDHANDLES;
         si.wShowWindow = SW_HIDE;
         si.hStdOutput = pipe_child_write;
         si.hStdError = pipe_child_write;
 
+        ASST_AUTO_DEDUCED_ZERO_INIT_START
         PROCESS_INFORMATION pi = { nullptr };
+        ASST_AUTO_DEDUCED_ZERO_INIT_END
 
         BOOL p_ret = CreateProcessA(nullptr, const_cast<LPSTR>(cmdline.c_str()), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi);
         if (p_ret) {
             DWORD peek_num = 0;
             DWORD read_num = 0;
             do {
-                while (::PeekNamedPipe(pipe_read, nullptr, 0, nullptr, &peek_num, nullptr) && peek_num > 0) {
-                    if (::ReadFile(pipe_read, pipe_buffer.get(), peek_num, &read_num, nullptr)) {
+                while (PeekNamedPipe(pipe_read, nullptr, 0, nullptr, &peek_num, nullptr) && peek_num > 0) {
+                    if (ReadFile(pipe_read, pipe_buffer.get(), peek_num, &read_num, nullptr)) {
                         pipe_str.append(pipe_buffer.get(), pipe_buffer.get() + read_num);
                     }
                 }
-            } while (::WaitForSingleObject(pi.hProcess, 0) == WAIT_TIMEOUT);
+            } while (WaitForSingleObject(pi.hProcess, 0) == WAIT_TIMEOUT);
 
             DWORD exit_ret = 255;
-            ::GetExitCodeProcess(pi.hProcess, &exit_ret);
+            GetExitCodeProcess(pi.hProcess, &exit_ret);
             CloseHandle(pi.hProcess);
             CloseHandle(pi.hThread);
         }
 
-        ::CloseHandle(pipe_read);
-        ::CloseHandle(pipe_child_write);
+        CloseHandle(pipe_read);
+        CloseHandle(pipe_child_write);
 
 #else
         constexpr static int PIPE_READ = 0;
@@ -246,6 +244,7 @@ namespace asst::utils
         int pipe_out[2] = { 0 };
         int pipe_in_ret = pipe(pipe_in);
         int pipe_out_ret = pipe(pipe_out);
+        if (pipe_in_ret != 0 || pipe_out_ret != 0) { return {}; }
         fcntl(pipe_out[PIPE_READ], F_SETFL, O_NONBLOCK);
         int exit_ret = 0;
         int child = fork();

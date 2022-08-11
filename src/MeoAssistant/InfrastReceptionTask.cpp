@@ -1,5 +1,7 @@
 #include "InfrastReceptionTask.h"
 
+#include "AsstRanges.hpp"
+
 #include "Controller.h"
 #include "InfrastClueImageAnalyzer.h"
 #include "InfrastClueVacancyImageAnalyzer.h"
@@ -14,7 +16,7 @@ bool asst::InfrastReceptionTask::_run()
 
     swipe_to_the_right_of_main_ui();
     enter_facility();
-    click_bottomleft_tab();
+    click_bottom_left_tab();
 
     close_end_of_clue_exchange();
 
@@ -27,7 +29,7 @@ bool asst::InfrastReceptionTask::_run()
         return false;
     }
     click_return_button();
-    click_bottomleft_tab();
+    click_bottom_left_tab();
     if (need_exit()) {
         return false;
     }
@@ -45,7 +47,7 @@ bool asst::InfrastReceptionTask::close_end_of_clue_exchange()
 bool asst::InfrastReceptionTask::get_clue()
 {
     ProcessTask task_temp(*this, { "InfrastClueSelfNew", "InfrastClueFriendNew", "InfrastClueSelfMaybeFull", "ReceptionFlag" });
-    return task_temp.run();
+    return task_temp.set_retry_times(ProcessTask::RetryTimesDefault).run();
 }
 
 bool asst::InfrastReceptionTask::use_clue()
@@ -70,7 +72,7 @@ bool asst::InfrastReceptionTask::use_clue()
     if (!vacancy_analyzer.analyze()) {
     }
     const auto& vacancy = vacancy_analyzer.get_vacancy();
-    for (auto&& [id, _] : vacancy) {
+    for (const auto& id : vacancy | views::keys) {
         Log.trace("InfrastReceptionTask | Vacancy", id);
     }
 

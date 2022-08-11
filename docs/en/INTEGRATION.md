@@ -51,7 +51,7 @@ Appends a task.
 // Corresponding task parameters
 {
     "enable": bool,             // Whether to enable this task, optional, true by default
-    "stage": string,            // Stage name, optional, by default "当前关卡". Editing in run-time is not supported.
+    "stage": string,            // Stage name, optional, by default crrent / last stage. Editing in run-time is not supported.
     "medicine": int,            // Maximum number Sanity Potion used, optional, by default 0
     "stone": int,               // Maximum number of Originite Prime used, optional, by default 0
     "times": int,               // Maximum times, optional, by default infinite
@@ -159,10 +159,16 @@ Appends a task.
 ```jsonc
 {
     "enable": bool,         // Whether to enable this task, optional, by default true
-    "mode": int             // Mode, optional, by default 0
-                            // 0 - Plays as much as you can
-                            // 1 - Exits after first level
-                            // 2 - Plays until trading
+    "mode": int,            // Mode, optional, by default 0
+                            // 0 - For candle, plays as much as you can with stable strategy
+                            // 1 - For Originium Ingots, exits after first level
+                            // 2 - For both, Plays until invests
+                            // 3 - For pass, plays as much as you can with aggressive strategy
+    "starts_count": int,    // Number of starts, optional, by default INT_MAX
+    "investments_count": int,
+                            // Number of investments, optional, by default INT_MAX
+    "stop_when_investment_full": bool
+                            // Stop the task when investment is full, optional, by default false          
 }
 ```
 

@@ -12,7 +12,6 @@ bool asst::RecruitImageAnalyzer::analyze()
     time_analyze();
     refresh_analyze();
     bool ret = tags_analyze();
-    ret &= confirm_analyze();
 
     return ret;
 }
@@ -22,14 +21,13 @@ bool asst::RecruitImageAnalyzer::tags_analyze()
     static bool analyzer_inited = false;
     static OcrImageAnalyzer tags_analyzer;
     if (!analyzer_inited) {
-        const auto tags_task_ptr = std::dynamic_pointer_cast<OcrTaskInfo>(
-            Task.get("RecruitTags"));
+        const auto tags_task_ptr = Task.get<OcrTaskInfo>("RecruitTags");
         tags_analyzer.set_roi(tags_task_ptr->roi);
         auto& all_tags_set = Resrc.recruit().get_all_tags();
         std::vector<std::string> all_tags_vec;
         all_tags_vec.assign(all_tags_set.begin(), all_tags_set.end());
         // 把因为“资深干员”是“高级资深干员”的子串，把“高级资深干员”放到最前面，免得先被“资深干员”匹配上了
-        auto ssr_iter = std::find(all_tags_vec.begin(), all_tags_vec.end(), "高级资深干员");
+        auto ssr_iter = ranges::find(all_tags_vec, "高级资深干员");
         if (ssr_iter != all_tags_vec.end()) {
             std::swap(*ssr_iter, all_tags_vec.front());
         }
@@ -53,15 +51,6 @@ bool asst::RecruitImageAnalyzer::tags_analyze()
 
 bool asst::RecruitImageAnalyzer::time_analyze()
 {
-    const auto time_task_ptr = Task.get("RecruitCheckTimeUnreduced");
-
-    MatchImageAnalyzer time_analyzer(m_image);
-    time_analyzer.set_task_info(time_task_ptr);
-    // 这里检查时间是否没有调整过
-    if (!time_analyzer.analyze()) {
-        return false;
-    }
-
     const auto set_time_task_ptr = Task.get("RecruitTimeReduce");
 
     MatchImageAnalyzer set_time_analyzer(m_image);
@@ -72,19 +61,6 @@ bool asst::RecruitImageAnalyzer::time_analyze()
         m_set_time_rect.emplace_back(rect);
         return true;
     }
-    return false;
-}
-
-bool asst::RecruitImageAnalyzer::confirm_analyze()
-{
-    MatchImageAnalyzer confirm_analyzer(m_image);
-    confirm_analyzer.set_task_info("RecruitConfirm");
-
-    if (confirm_analyzer.analyze()) {
-        m_confirm_rect = confirm_analyzer.get_result().rect;
-        return true;
-    }
-
     return false;
 }
 

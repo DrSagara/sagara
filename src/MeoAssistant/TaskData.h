@@ -16,7 +16,7 @@ namespace asst
         TaskData(const TaskData&) = delete;
         TaskData(TaskData&&) = delete;
 
-        virtual ~TaskData() = default;
+        virtual ~TaskData() override = default;
 
         static TaskData& get_instance() noexcept
         {
@@ -25,13 +25,35 @@ namespace asst
         }
         const std::unordered_set<std::string>& get_templ_required() const noexcept;
 
-        std::shared_ptr<const TaskInfo> get(const std::string& name) const noexcept;
-        std::shared_ptr<TaskInfo> get(const std::string& name);
+        template<typename TargetTaskInfoType>
+        requires std::derived_from<TargetTaskInfoType, TaskInfo>
+             && (!std::same_as<TargetTaskInfoType, TaskInfo>) // Parameter must be a TaskInfo and not same as TaskInfo
+        std::shared_ptr<TargetTaskInfoType> get(const std::string& name)
+        {
+            auto it = m_all_tasks_info.find(name);
+            if (it == m_all_tasks_info.cend()) {
+                return nullptr;
+            }
+
+            return std::dynamic_pointer_cast<TargetTaskInfoType>(it->second);
+        }
+
+        template<typename TargetTaskInfoType = TaskInfo>
+        requires std::same_as<TargetTaskInfoType, TaskInfo> // Parameter must be a TaskInfo
+        std::shared_ptr<TargetTaskInfoType> get(const std::string& name)
+        {
+            auto it = m_all_tasks_info.find(name);
+            if (it == m_all_tasks_info.cend()) {
+                return nullptr;
+            }
+
+            return it->second;
+        }
 
     protected:
         TaskData() = default;
 
-        virtual bool parse(const json::value& json);
+        virtual bool parse(const json::value& json) override;
 
         std::unordered_map<std::string, std::shared_ptr<TaskInfo>> m_all_tasks_info;
         std::unordered_set<std::string> m_templ_required;

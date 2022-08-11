@@ -13,31 +13,42 @@ bool asst::RoguelikeRecruitImageAnalyzer::analyze()
     OcrWithFlagTemplImageAnalyzer analyzer(m_image);
     analyzer.set_task_info("Roguelike1RecruitOcrFlag", "Roguelike1RecruitOcr");
     analyzer.set_replace(
-    std::dynamic_pointer_cast<OcrTaskInfo>(
-        Task.get("CharsNameOcrReplace"))
-    ->replace_map);
-
-    analyzer.set_required(Resrc.roguelike_recruit().get_oper_order());
+        Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map);
 
     if (!analyzer.analyze()) {
         return false;
     }
 
+    const auto& order = Resrc.roguelike_recruit().get_oper_order();
+    analyzer.set_required(order);
     analyzer.sort_result_by_required();
 
     for (const auto& [_, rect, name] : analyzer.get_result()) {
         int elite = match_elite(rect);
         int level = match_level(rect);
 
-        RecruitOperInfo info;
+        BattleRecruitOperInfo info;
         info.rect = rect;
         info.name = name;
         info.elite = elite;
         info.level = level;
+        info.required = ranges::find(order, name) != order.cend();
 
         Log.info(__FUNCTION__, name, elite, level, rect.to_string());
         m_result.emplace_back(std::move(info));
     }
+
+    auto first_un_req = ranges::find_if(m_result,
+        [&](const auto& info) -> bool {
+            return info.required == false;
+        });
+    std::sort(first_un_req, m_result.end(),
+        [&](const auto& lhs, const auto& rhs) -> bool {
+            if (lhs.elite == rhs.elite) {
+                return lhs.level > rhs.level;
+            }
+            return lhs.elite > rhs.elite;
+        });
 
     return !m_result.empty();
 }
@@ -80,7 +91,7 @@ int asst::RoguelikeRecruitImageAnalyzer::match_level(const Rect& raw_roi)
 
     auto task_ptr = Task.get("Roguelike1RecruitLevel");
     OcrWithPreprocessImageAnalyzer analyzer(m_image, raw_roi.move(task_ptr->roi));
-    auto& replace = std::dynamic_pointer_cast<OcrTaskInfo>(Task.get("NumberOcrReplace"))->replace_map;
+    auto& replace = Task.get<OcrTaskInfo>("NumberOcrReplace")->replace_map;
     analyzer.set_replace(replace);
     analyzer.set_expansion(1);
 
@@ -88,8 +99,8 @@ int asst::RoguelikeRecruitImageAnalyzer::match_level(const Rect& raw_roi)
         return 0;
     }
 
-    std::string level = analyzer.get_result().front().text;
-    if (!std::all_of(level.cbegin(), level.cend(),
+    const std::string& level = analyzer.get_result().front().text;
+    if (level.empty() || !ranges::all_of(level,
         [](char c) -> bool {return std::isdigit(c);})) {
         return 0;
     }

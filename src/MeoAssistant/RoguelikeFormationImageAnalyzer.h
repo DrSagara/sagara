@@ -14,7 +14,7 @@ namespace asst
         };
     public:
         using AbstractImageAnalyzer::AbstractImageAnalyzer;
-        virtual ~RoguelikeFormationImageAnalyzer() = default;
+        virtual ~RoguelikeFormationImageAnalyzer() override = default;
 
         virtual bool analyze() override;
 
@@ -24,10 +24,6 @@ namespace asst
         virtual void set_roi(const Rect& roi) noexcept override
         {
             AbstractImageAnalyzer::set_roi(roi);
-        }
-        virtual void set_image(const cv::Mat image, const Rect& roi)
-        {
-            AbstractImageAnalyzer::set_image(image, roi);
         }
 
         bool selected_analyze(const Rect& roi);

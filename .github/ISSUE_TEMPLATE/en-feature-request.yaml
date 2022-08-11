@@ -1,0 +1,23 @@
+name: Feature Request (in English)
+description: New features, suggestions, etc.
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: describe
+    attributes:
+      label: The problems you have encountered?
+    validations:
+      required: false
+  - type: textarea
+    id: solution
+    attributes:
+      label: Any good ideas?
+    validations:
+      required: false
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional
+      description: Any other background, screen shots, etc.
+    validations:
+      required: false

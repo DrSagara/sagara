@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <string_view>
 
+#include "NoWarningCV.h"
+
 #include "Logger.hpp"
 
 void asst::TemplResource::set_load_required(std::unordered_set<std::string> required) noexcept
@@ -38,7 +40,7 @@ bool asst::TemplResource::load(const std::string& dir)
 
 bool asst::TemplResource::exist_templ(const std::string& key) const noexcept
 {
-    return m_templs.find(key) != m_templs.cend();
+    return m_templs.contains(key);
 }
 
 const cv::Mat asst::TemplResource::get_templ(const std::string& key) const noexcept

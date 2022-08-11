@@ -1,6 +1,9 @@
 #include "BattleImageAnalyzer.h"
 
 #include <algorithm>
+#include "AsstRanges.hpp"
+
+#include "NoWarningCV.h"
 
 #include "MultiMatchImageAnalyzer.h"
 #include "MatchImageAnalyzer.h"
@@ -25,7 +28,7 @@ bool asst::BattleImageAnalyzer::analyze()
     clear();
 
     // HP 作为 flag，无论如何都识别。表明当前画面是在战斗场景的
-    bool ret = hp_analyze();
+    bool ret = hp_analyze() || flag_analyze();
 
     if (m_target & Target::Home) {
         ret |= home_analyze();
@@ -111,6 +114,12 @@ void asst::BattleImageAnalyzer::clear() noexcept
     m_cost = 0;
 }
 
+void asst::BattleImageAnalyzer::sort_opers_by_cost()
+{
+    // 本来游戏就是按费用排的，这里倒序一下就行了
+    ranges::reverse(m_opers);
+}
+
 bool asst::BattleImageAnalyzer::opers_analyze()
 {
     LogTraceFunction;
@@ -132,6 +141,9 @@ bool asst::BattleImageAnalyzer::opers_analyze()
     for (const MatchRect& flag_mrect : flags_analyzer.get_result()) {
         BattleRealTimeOper oper;
         oper.rect = flag_mrect.rect.move(click_move);
+        if (oper.rect.x + oper.rect.width >= m_image.cols) {
+            oper.rect.width = m_image.cols - oper.rect.x;
+        }
         oper.avatar = m_image(utils::make_rect<cv::Rect>(oper.rect));
 
         Rect available_rect = flag_mrect.rect.move(avlb_move);
@@ -147,6 +159,9 @@ bool asst::BattleImageAnalyzer::opers_analyze()
 #endif
 
         Rect cooling_rect = flag_mrect.rect.move(cooling_move);
+        if (cooling_rect.x + cooling_rect.width >= m_image.cols) {
+            cooling_rect.width = m_image.cols - cooling_rect.x;
+        }
         oper.cooling = oper_cooling_analyze(cooling_rect);
         if (oper.cooling && oper.available) {
             Log.error("oper is available, but with cooling");
@@ -154,9 +169,9 @@ bool asst::BattleImageAnalyzer::opers_analyze()
 
         Rect role_rect = flag_mrect.rect.move(role_move);
         oper.role = oper_role_analyze(role_rect);
-        Rect cost_rect = flag_mrect.rect.move(cost_move);
 
         // 费用识别的不太准，暂时也没用上，先注释掉，TODO：优化费用识别
+        //Rect cost_rect = flag_mrect.rect.move(cost_move);
         //oper.cost = oper_cost_analyze(cost_rect);
         oper.index = index++;
 
@@ -190,10 +205,10 @@ asst::BattleRole asst::BattleImageAnalyzer::oper_role_analyze(const Rect& roi)
         if (!role_analyzer.analyze()) {
             continue;
         }
-        if (double cur_socre = role_analyzer.get_result().score;
-            max_score < cur_socre) {
+        if (double cur_score = role_analyzer.get_result().score;
+            max_score < cur_score) {
             result = role;
-            max_score = cur_socre;
+            max_score = cur_score;
         }
     }
 
@@ -214,22 +229,26 @@ asst::BattleRole asst::BattleImageAnalyzer::oper_role_analyze(const Rect& roi)
 
 bool asst::BattleImageAnalyzer::oper_cooling_analyze(const Rect& roi)
 {
-    const auto cooling_task_ptr = std::dynamic_pointer_cast<MatchTaskInfo>(
-        Task.get("BattleOperCooling"));
+    const auto cooling_task_ptr = Task.get<MatchTaskInfo>("BattleOperCooling");
 
+    auto img_roi = m_image(utils::make_rect<cv::Rect>(roi));
     cv::Mat hsv;
-    cv::cvtColor(m_image(utils::make_rect<cv::Rect>(roi)), hsv, cv::COLOR_BGR2HSV);
-    std::vector<cv::Mat> channels;
-    cv::split(hsv, channels);
-    int mask_lowb = cooling_task_ptr->mask_range.first;
-    int mask_uppb = cooling_task_ptr->mask_range.second;
+    cv::cvtColor(img_roi, hsv, cv::COLOR_BGR2HSV);
+    int h_low = cooling_task_ptr->mask_range.first;
+    int h_up = cooling_task_ptr->mask_range.second;
+    int s_low = cooling_task_ptr->specific_rect.x;
+    int s_up = cooling_task_ptr->specific_rect.y;
+    int v_low = cooling_task_ptr->specific_rect.width;
+    int v_up = cooling_task_ptr->specific_rect.height;
+
+    cv::Mat bin;
+    cv::inRange(hsv, cv::Scalar(h_low, s_low, v_low), cv::Scalar(h_up, s_up, v_up), bin);
 
     int count = 0;
-    auto& h_channel = channels.at(0);
-    for (int i = 0; i != h_channel.rows; ++i) {
-        for (int j = 0; j != h_channel.cols; ++j) {
-            cv::uint8_t value = h_channel.at<cv::uint8_t>(i, j);
-            if (mask_lowb < value && value < mask_uppb) {
+    for (int i = 0; i != bin.rows; ++i) {
+        for (int j = 0; j != bin.cols; ++j) {
+            cv::uint8_t value = bin.at<cv::uint8_t>(i, j);
+            if (value) {
                 ++count;
             }
         }
@@ -259,7 +278,7 @@ int asst::BattleImageAnalyzer::oper_cost_analyze(const Rect& roi)
         std::unordered_map<std::string, std::string> num_hashs;
         for (auto&& num : NumName) {
             auto hashs_vec = std::dynamic_pointer_cast<HashTaskInfo>(
-                Task.get("BattleOperCost" + num))->hashs;
+                Task.get("BattleOperCost" + num))->hashes;
             for (size_t i = 0; i != hashs_vec.size(); ++i) {
                 num_hashs.emplace(num + "_" + std::to_string(i), hashs_vec.at(i));
             }
@@ -301,8 +320,8 @@ bool asst::BattleImageAnalyzer::oper_available_analyze(const Rect& roi)
     cv::Scalar avg = cv::mean(hsv);
     Log.trace("oper available, mean", avg[2]);
 
-    static int thres = static_cast<int>(std::dynamic_pointer_cast<MatchTaskInfo>(
-        Task.get("BattleOperAvailable"))->special_threshold);
+    static int thres = static_cast<int>(
+        Task.get<MatchTaskInfo>("BattleOperAvailable")->special_threshold);
     if (avg[2] < thres) {
         return false;
     }
@@ -402,7 +421,7 @@ bool asst::BattleImageAnalyzer::hp_analyze()
         std::unordered_map<std::string, std::string> num_hashs;
         for (auto&& num : NumName) {
             const auto& hashs_vec = std::dynamic_pointer_cast<HashTaskInfo>(
-                Task.get("BattleHp" + num))->hashs;
+                Task.get("BattleHp" + num))->hashes;
             for (size_t i = 0; i != hashs_vec.size(); ++i) {
                 num_hashs.emplace(num + "_" + std::to_string(i), hashs_vec.at(i));
             }
@@ -442,7 +461,7 @@ bool asst::BattleImageAnalyzer::kills_analyze()
     OcrWithFlagTemplImageAnalyzer kills_analyzer(m_image);
     kills_analyzer.set_task_info("BattleKillsFlag", "BattleKills");
     kills_analyzer.set_replace(
-        std::dynamic_pointer_cast<OcrTaskInfo>(Task.get("NumberOcrReplace"))->replace_map);
+        Task.get<OcrTaskInfo>("NumberOcrReplace")->replace_map);
 
     if (!kills_analyzer.analyze()) {
         return false;
@@ -482,7 +501,7 @@ bool asst::BattleImageAnalyzer::kills_analyze()
     // 例子中的"0"
     std::string kills_count = kills_text.substr(0, pos);
     if (kills_count.empty() ||
-        !std::all_of(kills_count.cbegin(), kills_count.cend(),
+        !ranges::all_of(kills_count,
             [](char c) -> bool {return std::isdigit(c);})) {
         return false;
     }
@@ -493,7 +512,7 @@ bool asst::BattleImageAnalyzer::kills_analyze()
     std::string total_kills = kills_text.substr(pos + 1, std::string::npos);
     int cur_total_kills = 0;
     if (total_kills.empty() ||
-        !std::all_of(total_kills.cbegin(), total_kills.cend(),
+        !ranges::all_of(total_kills,
             [](char c) -> bool {return std::isdigit(c);})) {
         Log.warn("total kills recognition failed, set to", m_pre_total_kills);
         cur_total_kills = m_pre_total_kills;
@@ -512,7 +531,7 @@ bool asst::BattleImageAnalyzer::cost_analyze()
     OcrWithPreprocessImageAnalyzer cost_analyzer(m_image);
     cost_analyzer.set_task_info("BattleCostData");
     cost_analyzer.set_replace(
-        std::dynamic_pointer_cast<OcrTaskInfo>(Task.get("NumberOcrReplace"))->replace_map);
+        Task.get<OcrTaskInfo>("NumberOcrReplace")->replace_map);
 
     if (!cost_analyzer.analyze()) {
         return false;
@@ -521,8 +540,8 @@ bool asst::BattleImageAnalyzer::cost_analyze()
     std::string cost_str = cost_analyzer.get_result().front().text;
 
     if (cost_str.empty() ||
-    !std::all_of(cost_str.cbegin(), cost_str.cend(),
-        [](char c) -> bool {return std::isdigit(c);})) {
+    !ranges::all_of(cost_str,
+        [](const char& c) -> bool {return std::isdigit(c);})) {
         return false;
     }
     m_cost = std::stoi(cost_str);
@@ -533,4 +552,11 @@ bool asst::BattleImageAnalyzer::cost_analyze()
 bool asst::BattleImageAnalyzer::vacancies_analyze()
 {
     return false;
+}
+
+bool asst::BattleImageAnalyzer::flag_analyze()
+{
+    MatchImageAnalyzer flag_analyzer(m_image);
+    flag_analyzer.set_task_info("BattleOfficiallyBegin");
+    return flag_analyzer.analyze();
 }

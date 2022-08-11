@@ -11,6 +11,8 @@
 #include "Logger.hpp"
 #include "Resource.h"
 
+static constexpr unsigned long long NullSize = static_cast<unsigned long long>(-1);
+
 #if 0
 #if _MSC_VER
 // Win32平台下Dll的入口
@@ -128,20 +130,6 @@ bool AsstSetTaskParams(AsstHandle handle, TaskId id, const char* params)
     return handle->set_task_params(id, params ? params : "");
 }
 
-unsigned long long AsstGetImage(AsstHandle handle, void* buff, unsigned long long buff_size)
-{
-    if (!inited || handle == nullptr || buff == nullptr) {
-        return 0;
-    }
-    auto img_data = handle->get_image();
-    size_t data_size = img_data.size();
-    if (buff_size < data_size) {
-        return 0;
-    }
-    memcpy(buff, img_data.data(), data_size);
-    return data_size;
-}
-
 bool AsstCtrlerClick(AsstHandle handle, int x, int y, bool block)
 {
     if (!inited || handle == nullptr) {
@@ -150,14 +138,52 @@ bool AsstCtrlerClick(AsstHandle handle, int x, int y, bool block)
     return handle->ctrler_click(x, y, block);
 }
 
-//bool AsstSetParam(AsstHandle handle, const char* type, const char* param, const char* value)
-//{
-//    if (handle == nullptr) {
-//        return false;
-//    }
-//
-//    return handle->set_param(type, param, value);
-//}
+unsigned long long AsstGetImage(AsstHandle handle, void* buff, unsigned long long buff_size)
+{
+    if (!inited || handle == nullptr || buff == nullptr) {
+        return NullSize;
+    }
+    auto img_data = handle->get_image();
+    size_t data_size = img_data.size();
+    if (buff_size < data_size) {
+        return NullSize;
+    }
+    memcpy(buff, img_data.data(), data_size * sizeof(decltype(img_data)::value_type));
+    return data_size;
+}
+
+unsigned long long AsstGetUUID(AsstHandle handle, char* buff, unsigned long long buff_size)
+{
+    if (!inited || handle == nullptr || buff == nullptr) {
+        return NullSize;
+    }
+    auto uuid = handle->get_uuid();
+    size_t data_size = uuid.size();
+    if (buff_size < data_size) {
+        return NullSize;
+    }
+    memcpy(buff, uuid.data(), data_size * sizeof(decltype(uuid)::value_type));
+    return data_size;
+}
+
+unsigned long long AsstGetTasksList(AsstHandle handle, TaskId* buff, unsigned long long buff_size)
+{
+    if (!inited || handle == nullptr || buff == nullptr) {
+        return NullSize;
+    }
+    auto tasks = handle->get_tasks_list();
+    size_t data_size = tasks.size();
+    if (buff_size < data_size) {
+        return NullSize;
+    }
+    memcpy(buff, tasks.data(), data_size * sizeof(decltype(tasks)::value_type));
+    return data_size;
+}
+
+unsigned long long AsstGetNullSize()
+{
+    return NullSize;
+}
 
 const char* AsstGetVersion()
 {

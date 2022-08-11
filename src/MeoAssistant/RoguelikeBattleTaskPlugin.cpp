@@ -2,6 +2,9 @@
 
 #include <chrono>
 #include <future>
+#include "AsstRanges.hpp"
+
+#include "NoWarningCV.h"
 
 #include "BattleImageAnalyzer.h"
 #include "Controller.h"
@@ -37,8 +40,8 @@ bool asst::RoguelikeBattleTaskPlugin::_run()
 {
     using namespace std::chrono_literals;
 
-    bool getted_info = get_stage_info();
-    if (!getted_info) {
+    bool gotten_info = get_stage_info();
+    if (!gotten_info) {
         return true;
     }
     if (!wait_start()) {
@@ -138,7 +141,7 @@ bool asst::RoguelikeBattleTaskPlugin::get_stage_info()
         m_homes = opt->replacement_home;
         std::string log_str = "[ ";
         for (auto& home : m_homes) {
-            if (m_normal_tile_info.find(home) == m_normal_tile_info.end()) {
+            if (!m_normal_tile_info.contains(home)) {
                 Log.error("No replacement home point", home.x, home.y);
             }
             log_str += "( " + std::to_string(home.x) + ", " + std::to_string(home.y) + " ), ";
@@ -214,20 +217,40 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
         return false;
     }
 
+    battle_analyzer.sort_opers_by_cost();
     const auto& opers = battle_analyzer.get_opers();
     if (opers.empty()) {
         return true;
+    }
+    // 如果已经放了一些人了，就不要再有费就下了
+    if (m_used_tiles.size() >= std::max(m_homes.size(), static_cast<size_t>(2))) {
+        size_t available_count = 0;
+        size_t not_cooling_count = 0;
+        for (const auto& oper : opers) {
+            if (oper.available) {
+                available_count += 1;
+            }
+            if (!oper.cooling) {
+                not_cooling_count += 1;
+            }
+        }
+        // 超过一半的人费用都没好，那就不下人
+        if (available_count <= not_cooling_count / 2) {
+            Log.trace("already used", m_used_tiles.size(), ", now_total", opers.size(),
+                ", available", available_count, ", not_cooling", not_cooling_count);
+            return true;
+        }
     }
 
     static const std::array<BattleRole, 9> RoleOrder = {
         BattleRole::Warrior,
         BattleRole::Pioneer,
         BattleRole::Medic,
-        BattleRole::Sniper,
-        BattleRole::Support,
-        BattleRole::Caster,
-        BattleRole::Special,
         BattleRole::Tank,
+        BattleRole::Sniper,
+        BattleRole::Caster,
+        BattleRole::Support,
+        BattleRole::Special,
         BattleRole::Drone
     };
     const auto use_oper_task_ptr = Task.get("BattleUseOper");
@@ -250,7 +273,7 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
                     wait_melee = true;
                 }
             }
-            else if (m_used_tiles.size() == 1) {
+            else if (m_used_tiles.size() == 1 && m_homes.size() == 1) {
                 if (op.role == BattleRole::Medic) {
                     wait_medic = true;
                 }
@@ -295,40 +318,31 @@ bool asst::RoguelikeBattleTaskPlugin::auto_battle()
     OcrWithPreprocessImageAnalyzer oper_name_analyzer(m_ctrler->get_image());
     oper_name_analyzer.set_task_info("BattleOperName");
     oper_name_analyzer.set_replace(
-        std::dynamic_pointer_cast<OcrTaskInfo>(
-            Task.get("CharsNameOcrReplace"))
-        ->replace_map);
+        Task.get<OcrTaskInfo>("CharsNameOcrReplace")->replace_map);
 
     std::string oper_name = "Unknown";
     if (oper_name_analyzer.analyze()) {
         oper_name_analyzer.sort_result_by_score();
         oper_name = oper_name_analyzer.get_result().front().text;
+        opt_oper.name = oper_name;
     }
 
     // 计算最优部署位置及方向
-    const auto& [placed_loc, direction] = calc_best_plan(opt_oper.role);
+    const auto& [placed_loc, direction] = calc_best_plan(opt_oper);
 
     // 将干员拖动到场上
     Point placed_point = m_side_tile_info.at(placed_loc).pos;
     Rect placed_rect(placed_point.x, placed_point.y, 1, 1);
-    int dist = static_cast<int>(
-        std::sqrt(
-            (std::pow(std::abs(placed_point.x - opt_oper.rect.x), 2))
-            + (std::pow(std::abs(placed_point.y - opt_oper.rect.y), 2))));
+    int dist = static_cast<int>(Point::distance(
+        placed_point, { opt_oper.rect.x + opt_oper.rect.width / 2, opt_oper.rect.y + opt_oper.rect.height / 2 }));
     // 1000 是随便取的一个系数，把整数的 pre_delay 转成小数用的
-    int duration = static_cast<int>(swipe_oper_task_ptr->pre_delay / 800.0 * dist * log10(dist));    m_ctrler->swipe(opt_oper.rect, placed_rect, duration, true, 0);
+    int duration = static_cast<int>(swipe_oper_task_ptr->pre_delay / 800.0 * dist * log10(dist));
+    m_ctrler->swipe(opt_oper.rect, placed_rect, duration, true, 0);
     sleep(use_oper_task_ptr->rear_delay);
 
     // 将方向转换为实际的 swipe end 坐标点
-    Point end_point = placed_point;
     constexpr int coeff = 500;
-    end_point.x += direction.x * coeff;
-    end_point.y += direction.y * coeff;
-
-    end_point.x = std::max(0, end_point.x);
-    end_point.x = std::min(end_point.x, WindowWidthDefault);
-    end_point.y = std::max(0, end_point.y);
-    end_point.y = std::min(end_point.y, WindowHeightDefault);
+    Point end_point = placed_point + (direction * coeff);
 
     m_ctrler->swipe(placed_point, end_point, swipe_oper_task_ptr->rear_delay, true, 100);
 
@@ -344,7 +358,7 @@ bool asst::RoguelikeBattleTaskPlugin::speed_up()
     return ProcessTask(*this, { "Roguelike1BattleSpeedUp" }).run();
 }
 
-bool asst::RoguelikeBattleTaskPlugin::use_skill(const asst::Rect& rect)
+bool asst::RoguelikeBattleTaskPlugin::use_skill(const Rect& rect)
 {
     m_ctrler->click(rect);
     sleep(Task.get("BattleUseOper")->pre_delay);
@@ -369,7 +383,7 @@ bool asst::RoguelikeBattleTaskPlugin::abandon()
 
 void asst::RoguelikeBattleTaskPlugin::all_melee_retreat()
 {
-    for (const auto& [loc, _] : m_used_tiles) {
+    for (const auto& loc : m_used_tiles | views::keys) {
         auto& tile_info = m_normal_tile_info[loc];
         auto& type = tile_info.buildable;
         if (type == Loc::Melee || type == Loc::All) {
@@ -536,10 +550,10 @@ bool asst::RoguelikeBattleTaskPlugin::wait_start()
 //    return placed_rect;
 //}
 
-asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::calc_best_plan(BattleRole role)
+asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::calc_best_plan(const BattleRealTimeOper& oper)
 {
     auto buildable_type = Loc::All;
-    switch (role) {
+    switch (oper.role) {
     case BattleRole::Medic:
     case BattleRole::Support:
     case BattleRole::Sniper:
@@ -593,7 +607,7 @@ asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::cal
     std::vector<Point> available_locations;
     for (const auto& [loc, tile] : m_normal_tile_info) {
         if ((tile.buildable == buildable_type || tile.buildable == Loc::All)
-            && m_used_tiles.find(loc) == m_used_tiles.cend()) {
+            && !m_used_tiles.contains(loc)) {
             available_locations.emplace_back(loc);
         }
     }
@@ -601,13 +615,13 @@ asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::cal
         Log.error("No available locations");
         if (m_used_tiles.empty()) {
             Log.error("No used tiles");
-            return DeployInfo();
+            return {};
         }
         m_used_tiles.clear();
-        return calc_best_plan(role);
+        return calc_best_plan(oper);
     }
 
-    std::sort(available_locations.begin(), available_locations.end(), comp_dist);
+    ranges::sort(available_locations, comp_dist);
 
     // 取距离最近的N个点，计算分数。然后使用得分最高的点
     constexpr int CalcPointCount = 4;
@@ -623,12 +637,12 @@ asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::cal
     int min_dist = std::abs(near_loc.x - home.x) + std::abs(near_loc.y - home.y);
 
     for (const auto& loc : available_locations) {
-        auto cur_result = calc_best_direction_and_score(loc, role);
+        auto cur_result = calc_best_direction_and_score(loc, oper);
         // 离得远的要扣分
         constexpr int DistWeights = -1050;
         int extra_dist = std::abs(loc.x - home.x) + std::abs(loc.y - home.y) - min_dist;
         int extra_dist_score = DistWeights * extra_dist;
-        if (role == BattleRole::Medic) {    // 医疗干员离得远无所谓
+        if (oper.role == BattleRole::Medic) {    // 医疗干员离得远无所谓
             extra_dist_score = 0;
         }
 
@@ -641,7 +655,7 @@ asst::RoguelikeBattleTaskPlugin::DeployInfo asst::RoguelikeBattleTaskPlugin::cal
     return { best_location, best_direction };
 }
 
-std::pair<asst::Point, int> asst::RoguelikeBattleTaskPlugin::calc_best_direction_and_score(Point loc, BattleRole role)
+std::pair<asst::Point, int> asst::RoguelikeBattleTaskPlugin::calc_best_direction_and_score(Point loc, const BattleRealTimeOper& oper)
 {
     LogTraceFunction;
 
@@ -654,7 +668,7 @@ std::pair<asst::Point, int> asst::RoguelikeBattleTaskPlugin::calc_best_direction
         home_loc = m_homes.at(m_cur_home_index);
     }
 
-    auto sgn = [](const int &x) -> int {
+    auto sgn = [](const int& x) -> int {
         if (x > 0) return 1;
         if (x < 0) return -1;
         return 0;
@@ -668,150 +682,121 @@ std::pair<asst::Point, int> asst::RoguelikeBattleTaskPlugin::calc_best_direction
         base_direction.x = sgn(loc.x - home_loc.x);
     }
     // 医疗反着算
-    if (role == BattleRole::Medic) {
+    if (oper.role == BattleRole::Medic) {
         base_direction = -base_direction;
     }
 
+    int64_t elite = m_status->get_number(RuntimeStatus::RoguelikeCharElitePrefix + oper.name).value_or(0);
     // 按朝右算，后面根据方向做转换
-    std::vector<Point> right_attack_range = { Point(0, 0) };
+    BattleAttackRange right_attack_range = Resrc.battle_data().get_range(oper.name, elite);
 
-    switch (role) {
-    case BattleRole::Support:
-        right_attack_range = {
-            Point(-1, -1),Point(0, -1),Point(1, -1),Point(2, -1),
-            Point(-1, 0), Point(0, 0), Point(1, 0), Point(2, 0),
-            Point(-1, 1), Point(0, 1), Point(1, 1), Point(2, 1),
-        };
-        break;
-    case BattleRole::Caster:
-        right_attack_range = {
-            Point(0, -1),Point(1, -1),Point(2, -1),
-            Point(0, 0), Point(1, 0), Point(2, 0), Point(3, 0),
-            Point(0, 1), Point(1, 1), Point(2, 1),
-        };
-        break;
-    case BattleRole::Medic:
-    case BattleRole::Sniper:
-        right_attack_range = {
-            Point(0, -1),Point(1, -1),Point(2, -1),Point(3, -1),
-            Point(0, 0), Point(1, 0), Point(2, 0), Point(3, 0),
-            Point(0, 1), Point(1, 1), Point(2, 1), Point(3, 1),
-        };
-        break;
-    case BattleRole::Warrior:
-        right_attack_range = {
-            Point(0, 0), Point(1, 0), Point(2, 0)
-        };
-        break;
-    case BattleRole::Special:
-    case BattleRole::Tank:
-    case BattleRole::Pioneer:
-    case BattleRole::Drone:
-        right_attack_range = {
-            Point(0, 0), Point(1, 0)
-        };
-        break;
+    if (right_attack_range == BattleDataConfiger::EmptyRange) {
+        switch (oper.role) {
+        case BattleRole::Support:
+            right_attack_range = {
+                Point(-1, -1),Point(0, -1),Point(1, -1),Point(2, -1),
+                Point(-1, 0), Point(0, 0), Point(1, 0), Point(2, 0),
+                Point(-1, 1), Point(0, 1), Point(1, 1), Point(2, 1),
+            };
+            break;
+        case BattleRole::Caster:
+            right_attack_range = {
+                Point(0, -1),Point(1, -1),Point(2, -1),
+                Point(0, 0), Point(1, 0), Point(2, 0), Point(3, 0),
+                Point(0, 1), Point(1, 1), Point(2, 1),
+            };
+            break;
+        case BattleRole::Medic:
+        case BattleRole::Sniper:
+            right_attack_range = {
+                Point(0, -1),Point(1, -1),Point(2, -1),Point(3, -1),
+                Point(0, 0), Point(1, 0), Point(2, 0), Point(3, 0),
+                Point(0, 1), Point(1, 1), Point(2, 1), Point(3, 1),
+            };
+            break;
+        case BattleRole::Warrior:
+            right_attack_range = {
+                Point(0, 0), Point(1, 0), Point(2, 0)
+            };
+            break;
+        case BattleRole::Special:
+        case BattleRole::Tank:
+        case BattleRole::Pioneer:
+        case BattleRole::Drone:
+            right_attack_range = {
+                Point(0, 0), Point(1, 0)
+            };
+            break;
+        default:
+            break;
+        }
     }
-
-    // 对余下三个方向分别计算攻击范围
-    std::vector<Point> down_attack_range;
-    std::vector<Point> left_attack_range;
-    std::vector<Point> up_attack_range;
-
-    down_attack_range.reserve(right_attack_range.size());
-    left_attack_range.reserve(right_attack_range.size());
-    up_attack_range.reserve(right_attack_range.size());
-
-    for (const auto& [x, y] : right_attack_range) {
-        down_attack_range.emplace_back(-y, x);
-        left_attack_range.emplace_back(-x, -y);
-        up_attack_range.emplace_back(y, -x);
-    }
-    std::vector<std::pair<const Point&, std::vector<Point>>> DirectionAttackRangeMap;
-    DirectionAttackRangeMap.reserve(4);
-    DirectionAttackRangeMap.emplace_back(Point::right(), std::move(right_attack_range));
-    DirectionAttackRangeMap.emplace_back(Point::down(), std::move(down_attack_range));
-    DirectionAttackRangeMap.emplace_back(Point::left(), std::move(left_attack_range));
-    DirectionAttackRangeMap.emplace_back(Point::up(), std::move(up_attack_range));
 
     int max_score = 0;
     Point opt_direction;
 
-    // 计算每个方向上的得分
-    for (const auto& [direction, dirction_attack_range] : DirectionAttackRangeMap) {
+    for (const Point& direction : { Point::right(), Point::up(), Point::left(), Point::down() }) {
         int score = 0;
-        for (const Point& cur_attack : dirction_attack_range) {
-            Point cur_point = loc;
-            cur_point.x += cur_attack.x;
-            cur_point.y += cur_attack.y;
+        for (const Point& relative_pos : right_attack_range) {
+            Point absolute_pos = loc + relative_pos;
 
             using TileKey = TilePack::TileKey;
             // 战斗干员朝向的权重
             static const std::unordered_map<TileKey, int> TileKeyFightWeights = {
-                { TileKey::Invalid, 0 },
-                { TileKey::Forbidden, 0 },
-                { TileKey::Wall, 500 },
-                { TileKey::Road, 1000 },
-                { TileKey::Home, 500 },
-                { TileKey::EnemyHome, 900 },
-                { TileKey::Floor, 1000 },
-                { TileKey::Hole, 0 },
-                { TileKey::Telin, 700 },
-                { TileKey::Telout, 800 },
-                { TileKey::Volcano, 1000 },
-                { TileKey::Healing, 1000 },
+                    { TileKey::Invalid, 0 },
+                    { TileKey::Forbidden, 0 },
+                    { TileKey::Wall, 500 },
+                    { TileKey::Road, 1000 },
+                    { TileKey::Home, 500 },
+                    { TileKey::EnemyHome, 1000 },
+                    { TileKey::Floor, 1000 },
+                    { TileKey::Hole, 0 },
+                    { TileKey::Telin, 700 },
+                    { TileKey::Telout, 800 },
+                    { TileKey::Volcano, 1000 },
+                    { TileKey::Healing, 1000 },
             };
             // 治疗干员朝向的权重
             static const std::unordered_map<TileKey, int> TileKeyMedicWeights = {
-                { TileKey::Invalid, 0 },
-                { TileKey::Forbidden, 0 },
-                { TileKey::Wall, 1000 },
-                { TileKey::Road, 1000 },
-                { TileKey::Home, 0 },
-                { TileKey::EnemyHome, 0 },
-                { TileKey::Floor, 0 },
-                { TileKey::Hole, 0 },
-                { TileKey::Telin, 0 },
-                { TileKey::Telout, 0 },
-                { TileKey::Volcano, 1000 },
-                { TileKey::Healing, 1000 },
+                    { TileKey::Invalid, 0 },
+                    { TileKey::Forbidden, 0 },
+                    { TileKey::Wall, 1000 },
+                    { TileKey::Road, 1000 },
+                    { TileKey::Home, 0 },
+                    { TileKey::EnemyHome, 0 },
+                    { TileKey::Floor, 0 },
+                    { TileKey::Hole, 0 },
+                    { TileKey::Telin, 0 },
+                    { TileKey::Telout, 0 },
+                    { TileKey::Volcano, 1000 },
+                    { TileKey::Healing, 1000 },
             };
 
-            switch (role) {
+            switch (oper.role) {
             case BattleRole::Medic:
-                // 医疗干员根据哪个方向上人多决定朝向哪
-                if (m_used_tiles.find(cur_point) != m_used_tiles.cend()) {
+                if (m_used_tiles.contains(absolute_pos)) // 根据哪个方向上人多决定朝向哪
                     score += 10000;
-                }
-                // 再额外加上没人的格子的权重
-                if (auto iter = m_side_tile_info.find(cur_point);
-                    iter == m_side_tile_info.cend()) {
-                    continue;
-                }
-                else {
+                if (auto iter = m_side_tile_info.find(absolute_pos); iter != m_side_tile_info.end())
                     score += TileKeyMedicWeights.at(iter->second.key);
-                }
                 break;
             default:
-                // 其他干员（战斗干员）根据哪个方向上权重高决定朝向哪
-                if (auto iter = m_side_tile_info.find(cur_point);
-                    iter == m_side_tile_info.cend()) {
-                    continue;
-                }
-                else {
+                if (auto iter = m_side_tile_info.find(absolute_pos); iter != m_side_tile_info.end())
                     score += TileKeyFightWeights.at(iter->second.key);
-                }
+                break;
             }
         }
 
-        if (direction == base_direction) {
+        if (direction == base_direction)
             score += 50;
-        }
 
         if (score > max_score) {
             max_score = score;
             opt_direction = direction;
         }
+
+        // rotate relative attack range counterclockwise
+        for (Point& point : right_attack_range)
+            point = { point.y, -point.x };
     }
 
     return std::make_pair(opt_direction, max_score);

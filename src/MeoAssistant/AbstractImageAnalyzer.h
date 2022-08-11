@@ -1,7 +1,6 @@
 #pragma once
 
-#include <opencv2/opencv.hpp>
-
+#include "NoWarningCVMat.h"
 #include "AsstTypes.h"
 
 //#ifndef  ASST_DEBUG
@@ -22,7 +21,6 @@ namespace asst
         virtual ~AbstractImageAnalyzer() = default;
 
         virtual void set_image(const cv::Mat image);
-        virtual void set_image(const cv::Mat image, const Rect& roi);
         virtual void set_roi(const Rect& roi) noexcept;
 
         virtual bool analyze() = 0;

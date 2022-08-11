@@ -95,14 +95,14 @@ bool ProcessTask::_run()
         };
         Log.info(info.to_string());
 
-        Rect rect;
-
         auto front_task_ptr = Task.get(m_cur_tasks_name.front());
         // 可能有配置错误，导致不存在对应的任务
         if (front_task_ptr == nullptr) {
             Log.error("Invalid task", m_cur_tasks_name.front());
             return false;
         }
+
+        Rect rect;
         // 如果第一个任务是JustReturn的，那就没必要再截图并计算了
         if (front_task_ptr->algorithm == AlgorithmType::JustReturn) {
             m_cur_task_ptr = front_task_ptr;
@@ -126,10 +126,7 @@ bool ProcessTask::_run()
 
         const auto& res_move = m_cur_task_ptr->rect_move;
         if (!res_move.empty()) {
-            rect.x += res_move.x;
-            rect.y += res_move.y;
-            rect.width = res_move.width;
-            rect.height = res_move.height;
+            rect = rect.move(res_move);
         }
 
         int& exec_times = m_exec_times[cur_name];
@@ -141,12 +138,14 @@ bool ProcessTask::_run()
         }
 
         if (exec_times >= max_times) {
+            info["what"] = "ExceededLimit";
             info["details"] = json::object{
                 { "task", cur_name },
                 { "exec_times", exec_times },
                 { "max_times", max_times }
             };
             Log.info("exec times exceeded the limit", info.to_string());
+            callback(AsstMsg::SubTaskExtraInfo, info);
             m_cur_tasks_name = m_cur_task_ptr->exceeded_next;
             sleep(m_task_delay);
             continue;
@@ -258,6 +257,13 @@ bool asst::ProcessTask::on_run_fails()
 
     set_tasks(m_cur_task_ptr->on_error_next);
     return run();
+}
+
+json::value asst::ProcessTask::basic_info() const
+{
+    return AbstractTask::basic_info() | json::object{
+        { "first", json::array(m_raw_tasks_name) }
+    };
 }
 
 void ProcessTask::exec_click_task(const Rect& matched_rect)
