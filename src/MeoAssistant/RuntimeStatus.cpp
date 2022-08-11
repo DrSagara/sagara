@@ -62,8 +62,3 @@ void asst::RuntimeStatus::clear_str() noexcept
 {
     m_string.clear();
 }
-
-std::vector<asst::InfrastSkillAdditional>& asst::RuntimeStatus::infrast_additional()
-{
-    return m_infrast_additional;
-}

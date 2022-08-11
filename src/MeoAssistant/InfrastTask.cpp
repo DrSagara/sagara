@@ -91,7 +91,13 @@ bool asst::InfrastTask::set_params(const json::value& params)
         }
 
         bool joint = params.get("joint", true);
-        if (joint && facility_arr.size() > 1) {
+#ifdef ASST_DEBUG
+        constexpr size_t MinFacilitySize = 0;
+#else
+        constexpr size_t MinFacilitySize = 1;
+#endif // ASST_DEBUG
+
+        if (joint && facility_arr.size() > MinFacilitySize) {
             m_subtasks.emplace_back(m_joint_task_ptr);
             append_infrast_begin();
         }

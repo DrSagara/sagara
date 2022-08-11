@@ -36,8 +36,6 @@ namespace asst
         void set_str(std::string key, std::string value);
         void clear_str() noexcept;
 
-        std::vector<InfrastSkillAdditional>& infrast_additional();
-
         RuntimeStatus& operator=(const RuntimeStatus& rhs) = delete;
         RuntimeStatus& operator=(RuntimeStatus&& rhs) noexcept = delete;
 
@@ -48,11 +46,12 @@ namespace asst
         static inline const std::string RoguelikeCharOverview = "RoguelikeOverview";
         static inline const std::string RoguelikeTraderNoLongerBuy = "RoguelikeNoLongerBuy";
 
-    private:
+        static inline const std::string InfrastEfficiencyOverview = "InfrastEfficiency";
+        static inline const std::string InfrastAdditionalOverview = "InfrastAdditional";
 
+    private:
         std::unordered_map<std::string, int64_t> m_number;
         std::unordered_map<std::string, Rect> m_rect;
         std::unordered_map<std::string, std::string> m_string;
-        std::vector<InfrastSkillAdditional> m_infrast_additional;
     };
 }
