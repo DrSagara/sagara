@@ -26,12 +26,12 @@ namespace MeoAssistant.Core.Resources
             throw new NotImplementedException();
         }
 
-        public IEnumerable<TextRect> Recognize(Mat image, TextRectProc? pred = null, bool withoutDet = false)
+        public IEnumerable<TextRect> Recognize(Cv.Mat image, TextRectProc? pred = null, bool withoutDet = false)
         {
             throw new NotImplementedException();
         }
 
-        public IEnumerable<TextRect> Recognize(Mat image, Rect roi, TextRectProc? pred = null, bool withoutDet = false)
+        public IEnumerable<TextRect> Recognize(Cv.Mat image, Rect roi, TextRectProc? pred = null, bool withoutDet = false)
         {
             throw new NotImplementedException();
         }

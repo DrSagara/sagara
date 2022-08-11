@@ -44,7 +44,7 @@ namespace MeoAssistant.Core.Definitions.Battle
         /// <summary>
         /// Gets or sets the avatar.
         /// </summary>
-        public Mat Avatar { get; set; } = default!;
+        public Cv.Mat Avatar { get; set; } = default!;
 
         /// <summary>
         /// Gets or sets the name.

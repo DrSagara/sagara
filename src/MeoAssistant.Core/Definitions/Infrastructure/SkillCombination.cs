@@ -1,4 +1,4 @@
-﻿// <copyright file="SkillCombination.cs" company="MaaAssistantArknights">
+// <copyright file="SkillCombination.cs" company="MaaAssistantArknights">
 // MeoAsstGui - A part of the MeoAssistantArknights project
 // Copyright (C) 2021 MistEO and Contributors
 //
@@ -70,7 +70,7 @@ namespace MeoAssistant.Core.Definitions.Infrastructure
         /// <summary>
         /// Gets or sets the name for OCR.
         /// </summary>
-        public Mat NameImage { get; set; } = default!;
+        public Cv.Mat NameImage { get; set; } = default!;
 
         /// <inheritdoc/>
         public override bool Equals(object? obj)

@@ -17,7 +17,7 @@ namespace MeoAssistant.Core.Resources
 
     public class TemplateResource : AbstractResource
     {
-        private readonly Dictionary<string, Mat> templates = new();
+        private readonly Dictionary<string, Cv.Mat> templates = new();
 
         private HashSet<string> templateFilenames = new();
 
@@ -37,12 +37,12 @@ namespace MeoAssistant.Core.Resources
             return this.templates.ContainsKey(key);
         }
 
-        public Mat GetTemplate(string key)
+        public Cv.Mat GetTemplate(string key)
         {
             return this.templates.GetValueOrDefault(key) ?? new();
         }
 
-        public void EmplaceTemplate(string key, Mat template)
+        public void EmplaceTemplate(string key, Cv.Mat template)
         {
             this.templates[key] = template;
         }

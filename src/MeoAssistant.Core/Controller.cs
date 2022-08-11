@@ -84,7 +84,7 @@ namespace MeoAssistant.Core
         /// </summary>
         /// <param name="isRaw">A value indicating whether to get raw image.</param>
         /// <returns>The image matrix.</returns>
-        public Mat GetImage(bool isRaw = false)
+        public Cv.Mat GetImage(bool isRaw = false)
         {
             throw new NotImplementedException();
         }

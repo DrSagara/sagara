@@ -59,6 +59,6 @@ namespace MeoAssistant.Core.Definitions.Infrastructure
         /// <summary>
         /// Gets or sets the name for OCR.
         /// </summary>
-        public Mat NameImage { get; set; } = default!;
+        public Cv.Mat NameImage { get; set; } = default!;
     }
 }
