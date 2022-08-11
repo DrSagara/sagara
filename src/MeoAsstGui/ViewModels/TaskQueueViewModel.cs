@@ -220,13 +220,13 @@ namespace MeoAsstGui
 
             AllStageList = new List<CombData>
             {
+                // 「当前/上次」关卡导航
                 new CombData { Display = Localization.GetString("DefaultStage"), Value = string.Empty },
 
-                // new CombData { Display = Localization.GetString("CurrentStage"), Value = string.Empty },
-                // new CombData { Display = Localization.GetString("LastBattle"), Value = "LastBattle" },
-
-                // SideStory「多索雷斯假日」复刻活动关卡
-                new CombData { Display = "DH-9", Value = "DH-9" },
+                // SideStory「理想城：长夏狂欢季」活动
+                // new CombData { Display = "IC-9", Value = "IC-9" },
+                // new CombData { Display = "IC-8", Value = "IC-8" },
+                // new CombData { Display = "IC-7", Value = "IC-7" },
 
                 // 主线关卡
                 new CombData { Display = "1-7", Value = "1-7" },
@@ -249,6 +249,10 @@ namespace MeoAsstGui
                 new CombData { Display = Localization.GetString("PR-C-2"), Value = "PR-C-2" },
                 new CombData { Display = Localization.GetString("PR-D-1"), Value = "PR-D-1" },
                 new CombData { Display = Localization.GetString("PR-D-2"), Value = "PR-D-2" },
+
+                // 老版本「当前/上次」关卡导航
+                // new CombData { Display = Localization.GetString("CurrentStage"), Value = string.Empty },
+                // new CombData { Display = Localization.GetString("LastBattle"), Value = "LastBattle" },
 
                 // SideStory「绿野幻梦」活动
                 // new CombData { Display = "DV-6", Value = "DV-6" },
@@ -416,7 +420,7 @@ namespace MeoAsstGui
         /// <param name="content">The content.</param>
         /// <param name="color">The font color.</param>
         /// <param name="weight">The font weight.</param>
-        public void AddLog(string content, string color = "Gray", string weight = "Regular")
+        public void AddLog(string content, string color = LogColor.Trace, string weight = "Regular")
         {
             LogItemViewModels.Add(new LogItemViewModel(content, color, weight));
 
@@ -645,7 +649,7 @@ namespace MeoAsstGui
             bool caught = await task;
             if (!caught)
             {
-                AddLog(errMsg, "darkred");
+                AddLog(errMsg, LogColor.Error);
                 var settingsModel = _container.Get<SettingsViewModel>();
                 var subtask = Task.Run(() =>
                 {
@@ -659,7 +663,7 @@ namespace MeoAsstGui
                 caught = await task;
                 if (!caught)
                 {
-                    AddLog(errMsg, "darkred");
+                    AddLog(errMsg, LogColor.Error);
                     Idle = true;
                     return;
                 }
@@ -880,11 +884,11 @@ namespace MeoAsstGui
             bool isSet = asstProxy.AsstSetFightTaskParams(Stage, medicine, stone, times, DropsItemId, drops_quantity);
             if (isSet)
             {
-                AddLog(Localization.GetString("SetSuccessfully"), "Black");
+                AddLog(Localization.GetString("SetSuccessfully"), LogColor.Message);
             }
             else
             {
-                AddLog(Localization.GetString("SetFailed"), "Red");
+                AddLog(Localization.GetString("SetFailed"), LogColor.Error);
             }
         }
 
@@ -1147,7 +1151,7 @@ namespace MeoAsstGui
                     var asstProxy = _container.Get<AsstProxy>();
                     if (!asstProxy.AsstStartCloseDown())
                     {
-                        AddLog(Localization.GetString("CloseArknightsFailed"), "DarkRed");
+                        AddLog(Localization.GetString("CloseArknightsFailed"), LogColor.Error);
                     }
 
                     break;
@@ -1162,7 +1166,7 @@ namespace MeoAsstGui
                 case ActionType.ExitEmulator:
                     if (!killEumlatorbyWindow())
                     {
-                        AddLog(Localization.GetString("CloseEmulatorFailed"), "DarkRed");
+                        AddLog(Localization.GetString("CloseEmulatorFailed"), LogColor.Error);
                     }
 
                     break;
@@ -1170,7 +1174,7 @@ namespace MeoAsstGui
                 case ActionType.ExitEmulatorAndSelf:
                     if (!killEumlatorbyWindow())
                     {
-                        AddLog(Localization.GetString("CloseEmulatorFailed"), "DarkRed");
+                        AddLog(Localization.GetString("CloseEmulatorFailed"), LogColor.Error);
                     }
 
                     // Shutdown 会调用 OnExit 但 Exit 不会
@@ -1199,7 +1203,7 @@ namespace MeoAsstGui
 
                 case ActionType.Hibernate:
                     // 休眠提示
-                    AddLog(Localization.GetString("HibernatePrompt"), "DarkRed");
+                    AddLog(Localization.GetString("HibernatePrompt"), LogColor.Error);
 
                     // 休眠不能加时间参数，https://github.com/MaaAssistantArknights/MaaAssistantArknights/issues/1133
                     Process.Start("shutdown.exe", "-h");
